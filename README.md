@@ -23,14 +23,12 @@ cargo run -- examples/norsk_tipping_candidates.csv \
   --research examples/research_sources.txt
 ```
 
-With the four OpenAI agents:
+The optional OpenAI API path is disabled by default to avoid API billing:
 
 ```bash
-OPENAI_API_KEY=... cargo run -- examples/norsk_tipping_candidates.csv \
+cargo run -- examples/norsk_tipping_candidates.csv \
   --date 2026-05-15 \
-  --research examples/research_sources.txt \
-  --ai \
-  --openai-model gpt-5.5
+  --research examples/research_sources.txt
 ```
 
 Input is a CSV of candidates copied or exported from Norsk Tipping plus your own
@@ -94,18 +92,19 @@ market, selection, value, warning, and price-hint terms and adds those findings
 to the final recommendation. Social posts and betting pages are treated as
 research signals, not proof.
 
-## OpenAI Agent Workflow
+## Manual ChatGPT/Codex Agent Workflow
 
-The optimized AI layer runs after the deterministic Rust filters have produced a
-compact top-3 report. It uses four roles:
+The recommended no-API-cost workflow is to let GitHub Actions publish the
+deterministic report, then ask ChatGPT/Codex from mobile or web to review it
+with four roles:
 
 - `Explorer`
 - `Reviewer`
 - `Risk Manager`
 - `Output Writer`
 
-The GitHub Action is configured to use `gpt-5.5` through the OpenAI Responses
-API. Add `OPENAI_API_KEY` as a GitHub Actions repository secret. See
+The Rust app still has an optional `--ai` API path for future use, but the
+scheduled GitHub Action does not use it. See `docs/CODEX_CHAT_WORKFLOW.md` and
 `docs/AI_AGENTS.md`.
 
 ## Morning Delivery

@@ -1,7 +1,11 @@
-# OpenAI Agent Workflow
+# Optional OpenAI API Agent Workflow
 
-The daily report can run through four OpenAI-backed agents after the deterministic
-Rust filters have ranked the candidates.
+The daily GitHub Action does not use the OpenAI API by default. This avoids API
+billing and avoids storing `OPENAI_API_KEY` in GitHub Secrets.
+
+The Rust CLI still has an optional OpenAI-backed path for future use. When
+enabled manually with `--ai`, the deterministic Rust report can run through four
+OpenAI-backed agents after the filters have ranked the candidates.
 
 This is intentionally optimized:
 
@@ -71,22 +75,16 @@ OPENAI_API_KEY=... cargo run -- examples/norsk_tipping_candidates.csv \
 
 ## GitHub Actions
 
-Add this repository secret:
-
-```text
-OPENAI_API_KEY
-```
-
-The existing workflow enables the AI path with:
+The scheduled workflow intentionally disables the API path:
 
 ```yaml
-BETTING_ENABLE_AI: "true"
-BETTING_OPENAI_MODEL: gpt-5.5
-OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+BETTING_ENABLE_AI: "false"
 ```
 
-If `OPENAI_API_KEY` is missing, the workflow fails rather than silently
-publishing a non-AI report.
+Use ChatGPT/Codex manually from the mobile app for AI review without API
+billing. See `docs/CODEX_CHAT_WORKFLOW.md`.
+
+Only enable this API path if you deliberately want pay-as-you-go API usage later.
 
 ## Official API References
 
