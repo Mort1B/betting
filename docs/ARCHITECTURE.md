@@ -60,6 +60,15 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Selects the top 3 bettable candidates for the daily report.
 - Returns `NO BET` when the board does not meet the rules.
 
+`OpenAI Agent Workflow`
+
+- Runs only after deterministic filtering and ranking.
+- Uses four `gpt-5.5` roles: Explorer, Reviewer, Risk Manager, and Output
+  Writer.
+- Passes compact outputs between agents to reduce cost and keep each role
+  focused.
+- Produces the final user-facing report when `--ai` is enabled.
+
 ## Why The Architecture Requires Independent Probability
 
 Norsk Tipping odds already include Norsk Tipping's price and margin. A low odds
@@ -87,8 +96,14 @@ constraint is that the final price must be the current Norsk Tipping price.
 cargo run -- candidates.csv --date YYYY-MM-DD --research examples/research_sources.txt
 ```
 
-5. Place no bet if the tool says `NO BET`.
-6. For morning delivery, schedule `scripts/daily_betting.sh` with cron and set
+5. Run with AI enabled when `OPENAI_API_KEY` is available:
+
+```bash
+cargo run -- candidates.csv --date YYYY-MM-DD --research examples/research_sources.txt --ai
+```
+
+6. Place no bet if the tool says `NO BET`.
+7. For morning delivery, schedule `scripts/daily_betting.sh` with cron and set
    either the SMTP environment variables or the Pushover environment variables.
 
 ## Next Extension Points

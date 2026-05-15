@@ -8,6 +8,8 @@ INPUT_CSV="${BETTING_INPUT_CSV:-$REPO_DIR/examples/norsk_tipping_candidates.csv}
 RESEARCH_SOURCES="${BETTING_RESEARCH_SOURCES:-$REPO_DIR/examples/research_sources.txt}"
 TODAY="${BETTING_DATE:-$(TZ=Europe/Oslo date +%F)}"
 REPORT_TOKEN="${BETTING_REPORT_TOKEN:-${REPORT_TOKEN:-}}"
+ENABLE_AI="${BETTING_ENABLE_AI:-false}"
+OPENAI_MODEL="${BETTING_OPENAI_MODEL:-gpt-5.5}"
 
 if [[ -z "$REPORT_TOKEN" ]]; then
   echo "BETTING_REPORT_TOKEN or REPORT_TOKEN is required" >&2
@@ -21,9 +23,15 @@ DATED_REPORT="$REPORT_DIR/$TODAY.txt"
 mkdir -p "$REPORT_DIR"
 cd "$REPO_DIR"
 
+AI_ARGS=()
+if [[ "$ENABLE_AI" == "true" || "$ENABLE_AI" == "1" ]]; then
+  AI_ARGS=(--ai --openai-model "$OPENAI_MODEL")
+fi
+
 cargo run -- "$INPUT_CSV" \
   --date "$TODAY" \
   --research "$RESEARCH_SOURCES" \
+  "${AI_ARGS[@]}" \
   > "$TODAY_REPORT"
 
 cp "$TODAY_REPORT" "$DATED_REPORT"

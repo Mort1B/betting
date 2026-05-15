@@ -23,6 +23,16 @@ cargo run -- examples/norsk_tipping_candidates.csv \
   --research examples/research_sources.txt
 ```
 
+With the four OpenAI agents:
+
+```bash
+OPENAI_API_KEY=... cargo run -- examples/norsk_tipping_candidates.csv \
+  --date 2026-05-15 \
+  --research examples/research_sources.txt \
+  --ai \
+  --openai-model gpt-5.5
+```
+
 Input is a CSV of candidates copied or exported from Norsk Tipping plus your own
 probability and comparison signals. Norsk Tipping odds are the price that
 matters for the bet, but every candidate should be compared against independent
@@ -83,6 +93,20 @@ The program reviews up to `--max-research-pages 10` configured sources and up to
 market, selection, value, warning, and price-hint terms and adds those findings
 to the final recommendation. Social posts and betting pages are treated as
 research signals, not proof.
+
+## OpenAI Agent Workflow
+
+The optimized AI layer runs after the deterministic Rust filters have produced a
+compact top-3 report. It uses four roles:
+
+- `Explorer`
+- `Reviewer`
+- `Risk Manager`
+- `Output Writer`
+
+The GitHub Action is configured to use `gpt-5.5` through the OpenAI Responses
+API. Add `OPENAI_API_KEY` as a GitHub Actions repository secret. See
+`docs/AI_AGENTS.md`.
 
 ## Morning Delivery
 

@@ -30,20 +30,27 @@ personal data in the report.
    on the default branch.
 3. In the repository, go to `Settings -> Pages`.
 4. Set Pages source to `GitHub Actions`.
-5. Create a repository secret:
+5. Generate a report URL token locally:
+
+```bash
+openssl rand -hex 32
+```
+
+6. Create a repository secret:
 
 ```text
 Name: BETTING_REPORT_TOKEN
 Value: a long random string, for example 40+ random characters
 ```
 
-Generate a token locally with:
+7. Create a second repository secret for the four-agent OpenAI workflow:
 
-```bash
-openssl rand -hex 32
+```text
+Name: OPENAI_API_KEY
+Value: your OpenAI API key
 ```
 
-6. Run the workflow once manually:
+8. Run the workflow once manually:
 
 ```text
 Actions -> Daily Betting Report -> Run workflow

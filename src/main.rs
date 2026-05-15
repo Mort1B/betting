@@ -1,4 +1,5 @@
 mod agents;
+mod ai;
 mod domain;
 mod input;
 mod notify;
@@ -9,6 +10,7 @@ use std::env;
 use std::process;
 
 use agents::DailyBetOrchestrator;
+use ai::{AiOptions, run_ai_workflow};
 use domain::BettingRules;
 use input::load_candidates_from_csv;
 use notify::{DeliveryOptions, deliver_report};
@@ -21,6 +23,7 @@ struct CliOptions {
     rules: BettingRules,
     research: ResearchOptions,
     delivery: DeliveryOptions,
+    ai: AiOptions,
 }
 
 fn main() {
@@ -61,7 +64,15 @@ fn main() {
 
     let orchestrator = DailyBetOrchestrator::new(options.rules.clone());
     let recommendation = orchestrator.recommend(candidates, research_digest.as_ref());
-    let report = render_recommendation(&options.rules, &recommendation);
+    let deterministic_report = render_recommendation(&options.rules, &recommendation);
+    let report = match run_ai_workflow(&deterministic_report, &options.ai) {
+        Ok(Some(ai_report)) => ai_report.final_output,
+        Ok(None) => deterministic_report,
+        Err(error) => {
+            eprintln!("failed to run OpenAI agent workflow: {error}");
+            process::exit(1);
+        }
+    };
     println!("{report}");
 
     match deliver_report(&report, &options.delivery) {
@@ -88,6 +99,7 @@ impl CliOptions {
         let mut rules = BettingRules::default();
         let mut research = ResearchOptions::default();
         let mut delivery = DeliveryOptions::default();
+        let mut ai = AiOptions::default();
         while let Some(flag) = args.next() {
             match flag.as_str() {
                 "--date" => rules.date = Some(next_value(&mut args, "--date")?),
@@ -113,6 +125,11 @@ impl CliOptions {
                 "--send-email" => delivery.send_email = true,
                 "--send-pushover" => delivery.send_pushover = true,
                 "--subject" => delivery.subject = next_value(&mut args, "--subject")?,
+                "--ai" => ai.enabled = true,
+                "--openai-model" => ai.model = next_value(&mut args, "--openai-model")?,
+                "--ai-max-output-tokens" => {
+                    ai.max_output_tokens = parse_u32(&mut args, "--ai-max-output-tokens")?;
+                }
                 unknown => return Err(format!("unknown option: {unknown}")),
             }
         }
@@ -123,6 +140,7 @@ impl CliOptions {
             rules,
             research,
             delivery,
+            ai,
         })
     }
 
@@ -142,7 +160,10 @@ impl CliOptions {
            --max-research-items N     default 10 for listing sources\n\
            --send-email               send report through SMTP env vars\n\
            --send-pushover            send report to iPhone through Pushover\n\
-           --subject TEXT             notification subject"
+           --subject TEXT             notification subject\n\
+           --ai                       run the 4-agent OpenAI workflow\n\
+           --openai-model MODEL       default gpt-5.5\n\
+           --ai-max-output-tokens N   default 900 per agent"
     }
 }
 
@@ -183,5 +204,14 @@ where
 {
     let raw = next_value(args, flag)?;
     raw.parse::<usize>()
+        .map_err(|_| format!("{flag} requires a positive integer, got {raw}"))
+}
+
+fn parse_u32<I>(args: &mut I, flag: &str) -> Result<u32, String>
+where
+    I: Iterator<Item = String>,
+{
+    let raw = next_value(args, flag)?;
+    raw.parse::<u32>()
         .map_err(|_| format!("{flag} requires a positive integer, got {raw}"))
 }
