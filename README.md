@@ -23,14 +23,6 @@ cargo run -- examples/norsk_tipping_candidates.csv \
   --research examples/research_sources.txt
 ```
 
-The optional OpenAI API path is disabled by default to avoid API billing:
-
-```bash
-cargo run -- examples/norsk_tipping_candidates.csv \
-  --date 2026-05-15 \
-  --research examples/research_sources.txt
-```
-
 Input is a CSV of candidates copied or exported from Norsk Tipping plus your own
 probability and comparison signals. Norsk Tipping odds are the price that
 matters for the bet, but every candidate should be compared against independent
@@ -132,6 +124,21 @@ cron setup.
 
 Local settings live in `.env`, which is ignored by git because it can contain
 delivery credentials. `.env.example` is the shareable template.
+
+## Security Baseline
+
+This repository now includes pre-build security guardrails for hardened VM and
+container environments:
+
+- `SECURITY.md`
+- `docs/SECURITY_ARCHITECTURE.md`
+- `docs/NETWORK_POLICY.md`
+- `docs/CONTAINER_HARDENING_BASELINE.md`
+- `docs/GITHUB_SECURITY_GUARDRAILS.md`
+
+The public betting workflow must stay outside any cleared enclave unless every
+external dependency and data flow is explicitly approved by the accrediting
+authority.
 
 ## Norsk Tipping Notes
 
