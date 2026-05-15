@@ -24,9 +24,13 @@ personal data in the report.
 ## GitHub Setup
 
 1. Push this repo to GitHub.
-2. In the repository, go to `Settings -> Pages`.
-3. Set Pages source to `GitHub Actions`.
-4. Create a repository secret:
+2. If the Actions tab says there are no workflows, go to
+   `Settings -> Actions -> General` and allow GitHub Actions for this
+   repository. The workflow file lives at `.github/workflows/daily-report.yml`
+   on the default branch.
+3. In the repository, go to `Settings -> Pages`.
+4. Set Pages source to `GitHub Actions`.
+5. Create a repository secret:
 
 ```text
 Name: BETTING_REPORT_TOKEN
@@ -39,7 +43,7 @@ Generate a token locally with:
 openssl rand -hex 32
 ```
 
-5. Run the workflow once manually:
+6. Run the workflow once manually:
 
 ```text
 Actions -> Daily Betting Report -> Run workflow
