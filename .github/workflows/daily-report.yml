@@ -2,6 +2,16 @@ name: Daily Betting Report
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/daily-report.yml"
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "examples/**"
+      - "scripts/publish_static_report.sh"
+      - "src/**"
   schedule:
     # 14:00 UTC is 16:00 in Norway during daylight saving time.
     - cron: "0 14 * * *"
