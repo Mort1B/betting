@@ -1,35 +1,81 @@
 # Betting Daily Agent
 
-Rust command line tool for choosing daily bet candidates from any sport or
-league, as long as the final bet price is the current Norsk Tipping price in the
-requested 1.15-1.30 odds band.
+Daily agentic betting workflow for finding the best value candidates on Norsk
+Tipping. The system can consider any sport or league, but the final bet price is
+always the current Norsk Tipping odds.
 
-The system is intentionally conservative: it outputs the top 3 bettable
-candidates with explanations, but if no candidate has a positive edge, enough
-estimated win probability, and enough confidence, the answer is `NO BET`. That
-is still part of the daily process.
+The daily target is a top-3 shortlist inside the configured odds band, default
+`1.15-1.30`. If the slate is too weak, the correct output is `NO BET`.
 
-## Quick Start
+## Current Setup
 
-```bash
-cargo run -- examples/norsk_tipping_candidates.csv --date 2026-05-15
+- Rust CLI for deterministic candidate scoring.
+- Visible agent definitions in `.agents/`.
+- Four OpenAI API review agents: `Explorer`, `Reviewer`, `Risk Manager`, and
+  `Output Writer`.
+- GitHub Actions runs the daily report workflow.
+- GitHub Pages publishes the report to a tokenized `today.txt` URL.
+- iPhone Shortcuts can fetch the report URL every day.
+- Security guardrails run on every push to `main`.
+
+## Daily Automation
+
+Workflow:
+
+```text
+.github/workflows/daily-report.yml
 ```
 
-With research sources:
+Schedule:
+
+```text
+14:00 UTC daily
+```
+
+That is 16:00 in Norway during daylight saving time.
+
+Required GitHub Actions secrets:
+
+- `BETTING_REPORT_TOKEN`: long random token for the private-by-obscurity report
+  path.
+- `OPENAI_API_KEY`: paid OpenAI API key for the four-agent review.
+
+Report URL shape:
+
+```text
+https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.txt
+```
+
+## Local Run
+
+Deterministic report:
 
 ```bash
 cargo run -- examples/norsk_tipping_candidates.csv \
-  --date 2026-05-15 \
+  --date 2026-05-16 \
   --research examples/research_sources.txt
 ```
 
-Input is a CSV of candidates copied or exported from Norsk Tipping plus your own
-probability and comparison signals. Norsk Tipping odds are the price that
-matters for the bet, but every candidate should be compared against independent
-reference odds, model probability, and research before it can be considered
-value.
+OpenAI reviewed report:
 
-## CSV Contract
+```bash
+OPENAI_API_KEY=... cargo run -- examples/norsk_tipping_candidates.csv \
+  --date 2026-05-16 \
+  --research examples/research_sources.txt \
+  --ai \
+  --openai-model gpt-5.5
+```
+
+Static publish test:
+
+```bash
+BETTING_REPORT_TOKEN=test-token \
+BETTING_PUBLIC_DIR=/tmp/betting-public \
+BETTING_ENABLE_AI=false \
+scripts/publish_static_report.sh
+```
+
+## Candidate CSV
 
 Required columns:
 
@@ -42,96 +88,75 @@ Required columns:
 - `norsk_tipping_odds`
 - `starts_at`
 
-Optional but important columns:
+Important optional columns:
 
-- `model_probability`: your estimated probability from a model, research sheet,
-  or manual assessment.
-- `reference_odds`: a comparable market price from another source. This is used
-  as an independent probability signal and is printed against the Norsk Tipping
-  price in the final explanation.
-- `confidence`: 0.0-1.0 confidence score after checking team news, lineup,
-  injury, motivation, and market stability.
-- `notes`: free-text context. Risk words such as `injury`, `rotation`, `weather`,
-  `derby`, and `cup` reduce confidence.
+- `model_probability`: estimated win probability from your own model or manual
+  research.
+- `reference_odds`: comparable market price from another source.
+- `confidence`: 0.0-1.0 confidence after checking lineup, injury, motivation,
+  market stability, and context.
+- `notes`: free-text risk/context notes.
 
-## Default Gates
+## Scoring Rules
 
-- Norsk Tipping odds must be between `1.15` and `1.30`.
-- Estimated probability must be at least `79%`.
-- Edge versus Norsk Tipping implied probability must be at least `1.5`
-  percentage points.
-- Confidence must be at least `65%`.
-- Expected value must be non-negative.
+Defaults:
 
-All thresholds can be changed with CLI flags. Run with `--help` to see the
-available options.
+- Norsk Tipping odds: `1.15-1.30`.
+- Minimum estimated probability: `79%`.
+- Minimum edge versus Norsk Tipping implied probability: `1.5` percentage
+  points.
+- Minimum confidence: `65%`.
+- Minimum expected value: `0%`.
+
+A candidate without `model_probability` or `reference_odds` is rejected because
+Norsk Tipping implied probability alone cannot prove value.
+
+## Agent Workflow
+
+Deterministic Rust agents:
+
+- `OddsScreeningAgent`
+- `ProbabilityModelAgent`
+- `ValueAgent`
+- `RiskAgent`
+- `DailySelectionAgent`
+
+OpenAI review agents:
+
+- `Explorer`: finds value evidence and missing comparison data.
+- `Reviewer`: challenges ranking, weak evidence, and overclaiming.
+- `Risk Manager`: checks downside risk and no-bet triggers.
+- `Output Writer`: writes the final concise top-3 report.
+
+Human-readable agent contracts:
+
+- `AGENTS.md`
+- `.agents/workflows/daily_betting.md`
+- `.agents/roles/*.md`
 
 ## Research Sources
 
-Research is configured with a `name|kind|url` file. The default example is
-`examples/research_sources.txt`, which includes Reddit JSON listing sources and
-a normal HTML page.
+Research source file:
 
-Supported kinds:
-
-- `reddit_json`: reads top posts from Reddit JSON listing URLs such as
-  `/r/soccerbetting/top.json?t=day&limit=10`.
-- `html`: fetches a normal web page and extracts text from the HTML body.
-
-The program reviews up to `--max-research-pages 10` configured sources and up to
-`--max-research-items 10` posts/items from listing sources. It looks for team,
-market, selection, value, warning, and price-hint terms and adds those findings
-to the final recommendation. Social posts and betting pages are treated as
-research signals, not proof.
-
-## OpenAI API Agent Workflow
-
-The scheduled GitHub Action now runs the deterministic report through four
-OpenAI API roles:
-
-- `Explorer`
-- `Reviewer`
-- `Risk Manager`
-- `Output Writer`
-
-This requires paid OpenAI API access and an `OPENAI_API_KEY` GitHub Actions
-secret. See `docs/OPENAI_API_SETUP.md` and `docs/AI_AGENTS.md`.
-
-Visible repo-local agent definitions live in `.agents/`, and the root
-`AGENTS.md` describes the workflow contract.
-
-## Morning Delivery
-
-Recommended setup: GitHub Actions publishes the report to GitHub Pages, and an
-iPhone Shortcut fetches that URL every morning. This avoids Gmail credentials,
-Pushover, a VPS, and DNS. See `docs/GITHUB_PAGES_SHORTCUT.md`.
-
-Email and iPhone push delivery are supported:
-
-```bash
-cargo run -- examples/norsk_tipping_candidates.csv \
-  --date 2026-05-15 \
-  --research examples/research_sources.txt \
-  --send-email
+```text
+examples/research_sources.txt
 ```
 
-```bash
-cargo run -- examples/norsk_tipping_candidates.csv \
-  --date 2026-05-15 \
-  --research examples/research_sources.txt \
-  --send-pushover
-```
+Supported source kinds:
 
-See `docs/MORNING_DELIVERY.md` for SMTP/Pushover environment variables and the
-cron setup.
+- `reddit_json`
+- `html`
 
-Local settings live in `.env`, which is ignored by git because it can contain
-delivery credentials. `.env.example` is the shareable template.
+Research is treated as weak supporting evidence. It must not override hard value
+and risk gates.
 
-## Security Baseline
+## Security Guardrails
 
-This repository now includes pre-build security guardrails for hardened VM and
-container environments:
+This is a public internet workflow. It talks to GitHub, OpenAI, Reddit, Norsk
+Tipping, and public web pages. It must stay outside any cleared enclave unless
+all external dependencies and data flows are explicitly approved.
+
+Security docs:
 
 - `SECURITY.md`
 - `docs/SECURITY_ARCHITECTURE.md`
@@ -139,26 +164,23 @@ container environments:
 - `docs/CONTAINER_HARDENING_BASELINE.md`
 - `docs/GITHUB_SECURITY_GUARDRAILS.md`
 
-The public betting workflow must stay outside any cleared enclave unless every
-external dependency and data flow is explicitly approved by the accrediting
-authority.
+Security workflow:
 
-## Norsk Tipping Notes
+```text
+.github/workflows/security-guardrails.yml
+```
 
-The architecture uses `Oddsen`, not `Langoddsen`: Norsk Tipping's own site says
-Langoddsen is no longer offered and points players to Oddsen/Oddsbomben instead.
-Norsk Tipping also states that odds express probability, are set from available
-information such as statistics, form, lineup, and home advantage, and may change
-before a bet is submitted. Run the tool close to when you place the bet and use
-the current Norsk Tipping price.
+It runs formatting, tests, clippy, static guardrails, and `cargo audit`.
 
-Sources:
+## Useful Docs
 
-- https://www.norsk-tipping.no/sport/oddsen/slik-spiller-du
-- https://www.norsk-tipping.no/kundeservice/velge-spill/oddsen/hva-er-odds
-- https://www.norsk-tipping.no/sport/langoddsen
+- `docs/OPENAI_API_SETUP.md`
+- `docs/GITHUB_PAGES_SHORTCUT.md`
+- `docs/AI_AGENTS.md`
+- `docs/LANGGRAPH_EVALUATION.md`
+- `docs/MORNING_DELIVERY.md`
 
 ## Responsible Use
 
-This tool is decision support, not a guarantee. It should never increase stake
-size after losses, chase action, or force a bet when the daily slate is poor.
+This is decision support, not a guarantee. Do not chase losses, increase stake
+size after losses, or force a bet when the slate is poor.
