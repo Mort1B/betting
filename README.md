@@ -97,6 +97,9 @@ OpenAI API roles:
 This requires paid OpenAI API access and an `OPENAI_API_KEY` GitHub Actions
 secret. See `docs/OPENAI_API_SETUP.md` and `docs/AI_AGENTS.md`.
 
+Visible repo-local agent definitions live in `.agents/`, and the root
+`AGENTS.md` describes the workflow contract.
+
 ## Morning Delivery
 
 Recommended setup: GitHub Actions publishes the report to GitHub Pages, and an
