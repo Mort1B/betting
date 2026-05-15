@@ -1,6 +1,7 @@
 # Betting Daily Agent
 
-Rust command line tool for choosing one daily Norsk Tipping bet candidate in the
+Rust command line tool for choosing daily bet candidates from any sport or
+league, as long as the final bet price is the current Norsk Tipping price in the
 requested 1.15-1.30 odds band.
 
 The system is intentionally conservative: it outputs the top 3 bettable
@@ -23,8 +24,10 @@ cargo run -- examples/norsk_tipping_candidates.csv \
 ```
 
 Input is a CSV of candidates copied or exported from Norsk Tipping plus your own
-probability signals. Norsk Tipping odds are the price that matters for the bet,
-but they are not enough on their own to prove value.
+probability and comparison signals. Norsk Tipping odds are the price that
+matters for the bet, but every candidate should be compared against independent
+reference odds, model probability, and research before it can be considered
+value.
 
 ## CSV Contract
 
@@ -44,7 +47,8 @@ Optional but important columns:
 - `model_probability`: your estimated probability from a model, research sheet,
   or manual assessment.
 - `reference_odds`: a comparable market price from another source. This is used
-  as an independent probability signal.
+  as an independent probability signal and is printed against the Norsk Tipping
+  price in the final explanation.
 - `confidence`: 0.0-1.0 confidence score after checking team news, lineup,
   injury, motivation, and market stability.
 - `notes`: free-text context. Risk words such as `injury`, `rotation`, `weather`,

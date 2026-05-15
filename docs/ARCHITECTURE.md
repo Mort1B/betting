@@ -8,7 +8,8 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 `OddsScreeningAgent`
 
 - Applies the daily date filter.
-- Enforces the requested Norsk Tipping odds band, default `1.15-1.30`.
+- Enforces the requested Norsk Tipping odds band, default `1.15-1.30`, across
+  any sport or league available at Norsk Tipping.
 - Keeps rejected candidates visible in the final report so the decision is
   auditable.
 
@@ -26,6 +27,8 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Calculates implied probability from the Norsk Tipping odds.
 - Calculates expected value as `estimated_probability * odds - 1`.
 - Calculates edge as `estimated_probability - implied_probability`.
+- Reports whether the Norsk Tipping price is higher or lower than supplied
+  reference-market odds.
 
 `RiskAgent`
 
@@ -67,12 +70,15 @@ therefore refuses to call a candidate valuable unless the CSV includes either:
 - `reference_odds`.
 
 This keeps the daily pick aligned with the goal: the most likely successful bet
-inside the odds band that still has value.
+inside the odds band that still has value. The sport is not constrained; the
+constraint is that the final price must be the current Norsk Tipping price.
 
 ## Daily Workflow
 
-1. Collect current Norsk Tipping candidates in the `1.15-1.30` band.
-2. Add independent model probabilities or reference prices.
+1. Collect current Norsk Tipping candidates in the `1.15-1.30` band from any
+   sport or league.
+2. Add independent model probabilities or reference prices from comparable
+   markets.
 3. Add confidence and risk notes after checking injury, lineup, motivation, and
    market context.
 4. Run with research enabled:

@@ -67,6 +67,7 @@ fn push_ranked_candidate_details(output: &mut String, rank: usize, candidate: &E
 }
 
 fn push_candidate_details(output: &mut String, candidate: &EvaluatedCandidate) {
+    output.push_str(&format!("Sport: {}\n", candidate.candidate.sport));
     output.push_str(&format!("Event: {}\n", candidate.candidate.event));
     output.push_str(&format!(
         "Competition: {}\n",
@@ -79,6 +80,15 @@ fn push_candidate_details(output: &mut String, candidate: &EvaluatedCandidate) {
         "Norsk Tipping odds: {:.2}\n",
         candidate.candidate.norsk_tipping_odds
     ));
+    if let Some(reference_odds) = candidate.candidate.reference_odds {
+        output.push_str(&format!("Reference market odds: {reference_odds:.2}\n"));
+        output.push_str(&format!(
+            "Norsk Tipping comparison: {}\n",
+            price_comparison(candidate.candidate.norsk_tipping_odds, reference_odds)
+        ));
+    } else {
+        output.push_str("Reference market odds: not supplied\n");
+    }
     output.push_str(&format!(
         "Estimated probability: {:.2}%\n",
         candidate.probability.estimated_probability * 100.0
@@ -142,6 +152,18 @@ fn candidate_explanation(candidate: &EvaluatedCandidate) -> String {
         candidate.probability.implied_probability * 100.0
     )];
 
+    if let Some(reference_odds) = candidate.candidate.reference_odds {
+        parts.push(format!(
+            "Norsk Tipping is {}",
+            price_comparison(candidate.candidate.norsk_tipping_odds, reference_odds)
+        ));
+    } else {
+        parts.push(
+            "no reference market odds were supplied, so comparison relies on model probability and research"
+                .to_string(),
+        );
+    }
+
     parts.push(format!(
         "edge is {:.2} pp and expected value is {:.2}%",
         candidate.value.edge * 100.0,
@@ -169,4 +191,18 @@ fn candidate_explanation(candidate: &EvaluatedCandidate) -> String {
     }
 
     parts.join("; ")
+}
+
+fn price_comparison(norsk_tipping_odds: f64, reference_odds: f64) -> String {
+    let percent_difference = ((norsk_tipping_odds / reference_odds) - 1.0) * 100.0;
+    if percent_difference > 0.0 {
+        format!("{percent_difference:.2}% higher than the reference market")
+    } else if percent_difference < 0.0 {
+        format!(
+            "{:.2}% lower than the reference market",
+            percent_difference.abs()
+        )
+    } else {
+        "equal to the reference market".to_string()
+    }
 }

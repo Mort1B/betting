@@ -3,8 +3,8 @@ name: Daily Betting Report
 on:
   workflow_dispatch:
   schedule:
-    # 06:30 UTC is morning in Norway throughout the year.
-    - cron: "30 6 * * *"
+    # 14:00 UTC is 16:00 in Norway during daylight saving time.
+    - cron: "0 14 * * *"
 
 permissions:
   contents: read
