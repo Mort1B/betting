@@ -43,7 +43,14 @@ Name: BETTING_REPORT_TOKEN
 Value: a long random string, for example 40+ random characters
 ```
 
-7. Run the workflow once manually:
+7. Create the OpenAI API repository secret for the four-agent workflow:
+
+```text
+Name: OPENAI_API_KEY
+Value: your OpenAI API key
+```
+
+8. Run the workflow once manually:
 
 ```text
 Actions -> Daily Betting Report -> Run workflow

@@ -92,20 +92,18 @@ market, selection, value, warning, and price-hint terms and adds those findings
 to the final recommendation. Social posts and betting pages are treated as
 research signals, not proof.
 
-## Manual ChatGPT/Codex Agent Workflow
+## OpenAI API Agent Workflow
 
-The recommended no-API-cost workflow is to let GitHub Actions publish the
-deterministic report, then ask ChatGPT/Codex from mobile or web to review it
-with four roles:
+The scheduled GitHub Action now runs the deterministic report through four
+OpenAI API roles:
 
 - `Explorer`
 - `Reviewer`
 - `Risk Manager`
 - `Output Writer`
 
-The Rust app still has an optional `--ai` API path for future use, but the
-scheduled GitHub Action does not use it. See `docs/CODEX_CHAT_WORKFLOW.md` and
-`docs/AI_AGENTS.md`.
+This requires paid OpenAI API access and an `OPENAI_API_KEY` GitHub Actions
+secret. See `docs/OPENAI_API_SETUP.md` and `docs/AI_AGENTS.md`.
 
 ## Morning Delivery
 

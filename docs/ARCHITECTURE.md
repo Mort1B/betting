@@ -63,13 +63,12 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 `OpenAI Agent Workflow`
 
 - Runs only after deterministic filtering and ranking.
-- Is disabled in the scheduled GitHub Action to avoid API billing.
-- Can still be run manually through ChatGPT/Codex by using the same four roles:
-  Explorer, Reviewer, Risk Manager, and Output Writer.
+- Is enabled in the scheduled GitHub Action when `OPENAI_API_KEY` is configured
+  as a repository secret.
+- Uses four roles: Explorer, Reviewer, Risk Manager, and Output Writer.
 - Passes compact outputs between agents to reduce cost and keep each role
   focused.
-- Produces the final user-facing report when reviewed manually, or when the
-  optional API path is deliberately enabled with `--ai`.
+- Produces the final user-facing report through the optional `--ai` path.
 
 ## Why The Architecture Requires Independent Probability
 
@@ -98,8 +97,8 @@ constraint is that the final price must be the current Norsk Tipping price.
 cargo run -- candidates.csv --date YYYY-MM-DD --research examples/research_sources.txt
 ```
 
-5. Use ChatGPT/Codex manually if you want the four-agent AI review without API
-   billing. See `docs/CODEX_CHAT_WORKFLOW.md`.
+5. Configure `OPENAI_API_KEY` in GitHub Secrets so the scheduled workflow can run
+   the four-agent API review. See `docs/OPENAI_API_SETUP.md`.
 6. Place no bet if the tool says `NO BET`.
 7. For morning delivery, schedule `scripts/daily_betting.sh` with cron and set
    either the SMTP environment variables or the Pushover environment variables.

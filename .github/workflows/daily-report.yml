@@ -35,7 +35,9 @@ jobs:
           BETTING_INPUT_CSV: ${{ github.workspace }}/examples/norsk_tipping_candidates.csv
           BETTING_RESEARCH_SOURCES: ${{ github.workspace }}/examples/research_sources.txt
           BETTING_REPORT_TOKEN: ${{ secrets.BETTING_REPORT_TOKEN }}
-          BETTING_ENABLE_AI: "false"
+          BETTING_ENABLE_AI: "true"
+          BETTING_OPENAI_MODEL: gpt-5.5
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: scripts/publish_static_report.sh
 
       - name: Configure Pages

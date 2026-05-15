@@ -110,8 +110,7 @@ impl OpenAiClient {
             "instructions": instructions,
             "input": input,
             "max_output_tokens": self.max_output_tokens,
-            "store": false,
-            "temperature": 0.2
+            "store": false
         });
 
         let response = self
