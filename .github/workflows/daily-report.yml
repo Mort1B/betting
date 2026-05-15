@@ -1,0 +1,50 @@
+name: Daily Betting Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 06:30 UTC is morning in Norway throughout the year.
+    - cron: "30 6 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: daily-betting-report
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Generate static report
+        env:
+          BETTING_REPO_DIR: ${{ github.workspace }}
+          BETTING_PUBLIC_DIR: ${{ github.workspace }}/public
+          BETTING_INPUT_CSV: ${{ github.workspace }}/examples/norsk_tipping_candidates.csv
+          BETTING_RESEARCH_SOURCES: ${{ github.workspace }}/examples/research_sources.txt
+          BETTING_REPORT_TOKEN: ${{ secrets.BETTING_REPORT_TOKEN }}
+        run: scripts/publish_static_report.sh
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

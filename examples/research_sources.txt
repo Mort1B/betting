@@ -1,0 +1,6 @@
+# name|kind|url
+# Keep this file to sources you are allowed to fetch automatically.
+# The program reads at most --max-research-pages entries, default 10.
+Reddit soccerbetting daily|reddit_json|https://www.reddit.com/r/soccerbetting/top.json?t=day&limit=10
+Reddit sportsbook daily|reddit_json|https://www.reddit.com/r/sportsbook/top.json?t=day&limit=10
+Norsk Tipping Oddsen help|html|https://www.norsk-tipping.no/sport/oddsen/slik-spiller-du
