@@ -2,8 +2,8 @@
 
 ## Objective
 
-Produce a daily top-3 betting report using current Norsk Tipping odds, independent
-comparison signals, research evidence, and risk review.
+Produce a daily top-3 betting report using current Norsk Tipping odds,
+probability, context risk, research evidence, and optional comparison signals.
 
 ## Pipeline
 
@@ -14,9 +14,9 @@ comparison signals, research evidence, and risk review.
    - Requires `norsk_tipping_odds` as the final price.
 
 2. `Reference Odds Enrichment`
-   - Applies optional external comparison prices from `--reference-odds`.
+   - Optionally applies external comparison prices from `--reference-odds`.
    - Matches by exact candidate id or normalized event, market, and selection.
-   - Produces independent `reference_odds` without changing Norsk Tipping as the
+   - Produces optional `reference_odds` without changing Norsk Tipping as the
      final bet price.
 
 3. `Market Research Client`
@@ -25,9 +25,10 @@ comparison signals, research evidence, and risk review.
 
 4. `Deterministic Rust Agents`
    - Filter by date and odds band.
-   - Estimate probability from model probability and/or reference odds.
-   - Calculate edge and expected value.
-   - Apply risk and research adjustments.
+   - Estimate probability from market-implied odds, model probability, and/or
+     reference odds.
+   - Calculate edge and expected value only when independent inputs exist.
+   - Apply context risk and research adjustments.
    - Rank bettable candidates.
 
 5. `Explorer`
@@ -46,9 +47,9 @@ comparison signals, research evidence, and risk review.
 
 - Norsk Tipping odds must be inside the configured band, default `1.15-1.30`.
 - Estimated probability must clear the configured minimum.
-- Edge must clear the configured minimum.
+- Edge must clear the configured minimum only when independent model/reference
+  data exists.
 - Confidence must clear the configured minimum.
-- Missing independent signal rejects a candidate.
 - The final report still includes the top 3 best available fallback candidates
   when live candidates exist but strict value gates do not pass.
 

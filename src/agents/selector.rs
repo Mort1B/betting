@@ -17,9 +17,6 @@ impl DailySelectionAgent {
     ) -> Vec<String> {
         let mut rejections = Vec::new();
 
-        if !candidate.has_independent_probability_signal() {
-            rejections.push("missing independent probability signal".to_string());
-        }
         if probability.estimated_probability < rules.min_estimated_probability {
             rejections.push(format!(
                 "estimated probability {:.2}% is below {:.2}% floor",
@@ -27,14 +24,16 @@ impl DailySelectionAgent {
                 rules.min_estimated_probability * 100.0
             ));
         }
-        if value.edge < rules.min_edge {
+        if candidate.has_independent_probability_signal() && value.edge < rules.min_edge {
             rejections.push(format!(
                 "edge {:.2} pp is below {:.2} pp floor",
                 value.edge * 100.0,
                 rules.min_edge * 100.0
             ));
         }
-        if value.expected_value < rules.min_expected_value {
+        if candidate.has_independent_probability_signal()
+            && value.expected_value < rules.min_expected_value
+        {
             rejections.push(format!(
                 "expected value {:.2}% is below {:.2}% floor",
                 value.expected_value * 100.0,
@@ -63,12 +62,17 @@ impl DailySelectionAgent {
         let edge_score = (value.edge / 0.06).clamp(0.0, 1.0);
         let ev_score = (value.expected_value / 0.08).clamp(0.0, 1.0);
         let odds_band_fit = odds_band_fit(candidate.norsk_tipping_odds);
+        let evidence_score = if candidate.has_independent_probability_signal() {
+            ((edge_score + ev_score) / 2.0).max(risk.confidence)
+        } else {
+            risk.confidence
+        };
 
         100.0
-            * ((0.42 * probability_score)
-                + (0.26 * edge_score)
-                + (0.18 * ev_score)
-                + (0.10 * risk.confidence)
+            * ((0.55 * probability_score)
+                + (0.25 * risk.confidence)
+                + (0.10 * evidence_score)
+                + (0.06 * edge_score)
                 + (0.04 * odds_band_fit))
     }
 

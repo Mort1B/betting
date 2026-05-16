@@ -161,23 +161,26 @@ mod tests {
     }
 
     #[test]
-    fn rejects_candidates_without_independent_signal() {
+    fn accepts_market_implied_probability_when_confidence_is_strong() {
         let recommendation = DailyBetOrchestrator::new(BettingRules::default())
             .recommend(vec![candidate("unsupported", 1.21, None, Some(0.85))], None);
 
         match recommendation {
-            RecommendationDecision::BestAvailable { picks, .. } => {
+            RecommendationDecision::Bet { selected, .. } => {
+                assert_eq!(selected.candidate.id, "unsupported");
+                assert!(selected.is_bettable());
                 assert!(
-                    picks[0]
-                        .rejection_reasons
-                        .contains(&"missing independent probability signal".to_string())
+                    selected
+                        .probability
+                        .sources
+                        .contains(&"norsk_tipping_market_implied".to_string())
                 );
             }
-            RecommendationDecision::Bet { .. } => {
-                panic!("unsupported candidate should not be selected")
+            RecommendationDecision::BestAvailable { reason, .. } => {
+                panic!("strong market-implied candidate should be selectable: {reason}")
             }
             RecommendationDecision::NoBet { reason, .. } => {
-                panic!("expected fallback candidate, got no bet: {reason}")
+                panic!("expected candidate, got no bet: {reason}")
             }
         }
     }

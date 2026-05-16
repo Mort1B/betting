@@ -24,7 +24,6 @@ Run:
 ```bash
 cargo run -- --norsk-tipping-live \
   --date 2026-05-15 \
-  --reference-odds reference_odds.csv \
   --research examples/research_sources.txt \
   --send-email
 ```
@@ -45,7 +44,6 @@ Run:
 ```bash
 cargo run -- --norsk-tipping-live \
   --date 2026-05-15 \
-  --reference-odds reference_odds.csv \
   --research examples/research_sources.txt \
   --send-pushover
 ```
@@ -62,8 +60,8 @@ Edit `.env`, then add a crontab entry. `BETTING_DELIVERY` can be `email`,
 The script uses the current local date by default. If the date filter or strict
 rules would leave the report empty, the delivered report still includes the top
 3 best available candidates with confidence scores and strict-rule warnings.
-Set `BETTING_REFERENCE_ODDS_CSV` or create root `reference_odds.csv` when you
-have current external comparison prices for the day.
+`BETTING_REFERENCE_ODDS_CSV` is optional and only needed when you want extra
+comparison context.
 
 For reliable daily delivery, run the cron job on an always-on machine. See
 `docs/DEPLOYMENT.md`.

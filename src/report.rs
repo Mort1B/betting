@@ -8,12 +8,12 @@ pub fn render_recommendation(
     output.push_str("Daily betting agent recommendation\n");
     output.push_str("==================================\n\n");
     output.push_str(&format!(
-        "Rules: Norsk Tipping odds {:.2}-{:.2}, min probability {:.2}%, min edge {:.2} pp, min confidence {:.2}%\n",
+        "Rules: Norsk Tipping odds {:.2}-{:.2}, min probability {:.2}%, min confidence {:.2}%, min edge {:.2} pp when model/reference data exists\n",
         rules.min_odds,
         rules.max_odds,
         rules.min_estimated_probability * 100.0,
-        rules.min_edge * 100.0,
-        rules.min_confidence * 100.0
+        rules.min_confidence * 100.0,
+        rules.min_edge * 100.0
     ));
     if let Some(date) = &rules.date {
         output.push_str(&format!("Date filter: {date}\n"));
@@ -99,7 +99,7 @@ fn push_candidate_details(output: &mut String, candidate: &EvaluatedCandidate) {
             price_comparison(candidate.candidate.norsk_tipping_odds, reference_odds)
         ));
     } else {
-        output.push_str("Reference market odds: not supplied\n");
+        output.push_str("Reference market odds: not used\n");
     }
     output.push_str(&format!(
         "Estimated probability: {:.2}%\n",
@@ -111,9 +111,12 @@ fn push_candidate_details(output: &mut String, candidate: &EvaluatedCandidate) {
     ));
     output.push_str(&format!(
         "Expected value: {:.2}%\n",
-        candidate.value.expected_value * 100.0
+        clean_zero(candidate.value.expected_value * 100.0)
     ));
-    output.push_str(&format!("Edge: {:.2} pp\n", candidate.value.edge * 100.0));
+    output.push_str(&format!(
+        "Edge: {:.2} pp\n",
+        clean_zero(candidate.value.edge * 100.0)
+    ));
     output.push_str(&format!(
         "Confidence: {:.2}%\n",
         candidate.risk.confidence * 100.0
@@ -142,6 +145,12 @@ fn push_candidate_details(output: &mut String, candidate: &EvaluatedCandidate) {
         "Probability sources: {}\n",
         candidate.probability.sources.join(", ")
     ));
+    if !candidate.probability.notes.is_empty() {
+        output.push_str(&format!(
+            "Probability notes: {}\n",
+            candidate.probability.notes.join("; ")
+        ));
+    }
     output.push_str("Explanation: ");
     output.push_str(&candidate_explanation(candidate));
     output.push('\n');
@@ -183,15 +192,15 @@ fn candidate_explanation(candidate: &EvaluatedCandidate) -> String {
         ));
     } else {
         parts.push(
-            "no reference market odds were supplied, so comparison relies on model probability and research"
+            "no reference market odds were used, so ranking relies on market-implied probability, context risk, and research signals"
                 .to_string(),
         );
     }
 
     parts.push(format!(
         "edge is {:.2} pp and expected value is {:.2}%",
-        candidate.value.edge * 100.0,
-        candidate.value.expected_value * 100.0
+        clean_zero(candidate.value.edge * 100.0),
+        clean_zero(candidate.value.expected_value * 100.0)
     ));
 
     parts.push(format!(
@@ -229,4 +238,8 @@ fn price_comparison(norsk_tipping_odds: f64, reference_odds: f64) -> String {
     } else {
         "equal to the reference market".to_string()
     }
+}
+
+fn clean_zero(value: f64) -> f64 {
+    if value.abs() < 0.005 { 0.0 } else { value }
 }

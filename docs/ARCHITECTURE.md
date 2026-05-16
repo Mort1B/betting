@@ -13,8 +13,9 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Converts Norsk Tipping fractional price fields into decimal odds.
 - Emits candidates only inside the configured odds band, default `1.15-1.30`.
 - Skips events earlier than the live-source cutoff passed by the publisher.
-- Leaves `model_probability` and `reference_odds` empty because the source is
-  the final bet price, not independent value evidence.
+- Leaves `model_probability` and `reference_odds` empty by default. The
+  probability model can still rank these candidates from market-implied
+  probability plus context and research risk.
 
 `CSV Source`
 
@@ -45,12 +46,12 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 
 `ProbabilityModelAgent`
 
-- Estimates win probability from independent inputs.
+- Estimates win probability from the best available inputs.
 - Uses `model_probability` directly when supplied.
 - Uses `reference_odds` as a market-implied probability when supplied.
 - Blends model and reference signals when both exist.
-- Falls back to Norsk Tipping implied probability only for reporting; the
-  selector rejects that candidate because it has no independent value signal.
+- Uses Norsk Tipping market-implied probability as the baseline when no external
+  model or reference odds are supplied.
 
 `ValueAgent`
 
@@ -63,7 +64,10 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 `RiskAgent`
 
 - Starts from the supplied `confidence` score.
-- Penalizes missing independent signals and risk terms in notes.
+- Penalizes contextual risk terms across sport, competition, event, market,
+  selection, and notes.
+- Penalizes entertainment/special markets, friendlies, injury/rotation/weather
+  risk, and research warnings.
 - Applies small confidence adjustments from matched research warnings or
   positive signals.
 - Produces explicit risk flags for the report.
@@ -85,8 +89,10 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 
 `DailySelectionAgent`
 
-- Applies hard gates for probability, value, confidence, and expected value.
-- Scores bettable candidates with a success-first value score.
+- Applies hard gates for odds band, probability, and confidence.
+- Applies edge and expected-value gates only when independent model/reference
+  data exists.
+- Scores candidates with a success-first probability and context score.
 - Selects the top 3 candidates for the daily report.
 - Fills with best available fallback candidates when fewer than 3 pass every
   strict gate, preferring candidates inside the requested Norsk Tipping odds
@@ -103,28 +109,26 @@ The runtime is a deterministic multi-agent pipeline coordinated by
   focused.
 - Produces the final user-facing report through the optional `--ai` path.
 
-## Why The Architecture Requires Independent Probability
+## Probability And Context
 
-Norsk Tipping odds already include Norsk Tipping's price and margin. A low odds
-selection can be likely to win and still be a poor value bet. The system
-therefore refuses to call a candidate valuable unless the candidate includes
-either:
+The default workflow does not require external comparison odds. Norsk Tipping's
+price gives a market-implied success baseline, then the risk layer adjusts the
+candidate for practical context: market type, sport, competition, event notes,
+injury/rotation/weather terms, entertainment markets, friendlies, and research
+warnings.
 
-- `model_probability`, or
-- `reference_odds`.
-
-This keeps the daily pick aligned with the goal: the most likely successful bet
-inside the odds band that still has value. The sport is not constrained; the
-constraint is that the final price must be the current Norsk Tipping price.
+If `model_probability` or `reference_odds` is supplied, the system also evaluates
+edge and expected value. Without those inputs, the report does not claim a true
+external price edge; it ranks the strongest available candidates by probability
+and context.
 
 ## Daily Workflow
 
 1. Collect current Norsk Tipping candidates in the `1.15-1.30` band from live
    Oddsen data across any available sport or league.
-2. Add independent model probabilities or reference prices from comparable
-   markets. The scheduled scripts automatically use root `reference_odds.csv`
-   when that file exists.
-3. Add confidence and risk notes after checking injury, lineup, motivation, and
+2. Score candidates from market-implied probability, context confidence,
+   research signals, and optional model/reference data.
+3. Add risk notes after checking injury, lineup, motivation, market type, and
    market context.
 4. Run with research enabled:
 
@@ -141,8 +145,6 @@ cargo run -- --norsk-tipping-live --date YYYY-MM-DD --research examples/research
 
 ## Next Extension Points
 
-- Add a maintained daily reference-odds feed or generated root
-  `reference_odds.csv` so the enrichment step has current external prices.
 - Add sport-specific probability agents for football, tennis, hockey, and
   basketball.
 - Add a closing-line-value tracker so the daily process can measure whether the

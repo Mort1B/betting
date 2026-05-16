@@ -14,7 +14,9 @@ File: `src/agents/filter.rs`
 File: `src/agents/probability.rs`
 
 - Estimates probability from model probability and/or reference odds.
-- Refuses to treat Norsk Tipping implied probability alone as value evidence.
+- Uses Norsk Tipping market-implied probability as the default success baseline.
+- Does not claim external value edge unless model probability or reference odds
+  are supplied.
 
 ## Reference Odds Enrichment
 
@@ -38,7 +40,7 @@ File: `src/agents/value.rs`
 File: `src/agents/risk.rs`
 
 - Applies confidence penalties.
-- Flags risk terms from candidate notes.
+- Flags risk terms from sport, competition, event, market, selection, and notes.
 - Integrates research warning signals.
 
 ## DailySelectionAgent

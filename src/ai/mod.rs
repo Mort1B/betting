@@ -163,12 +163,12 @@ fn extract_output_text(value: &Value) -> Option<String> {
 }
 
 const EXPLORER_INSTRUCTIONS: &str = r#"You are the Explorer agent for a daily betting workflow.
-Use the supplied deterministic report only. Identify the strongest value evidence, missing comparison data, and research signals for the top candidates.
-Focus on Norsk Tipping odds versus reference odds, model probability, expected value, and research matches.
+Use the supplied deterministic report only. Identify the strongest probability, context, confidence, and research signals for the top candidates.
+Focus on Norsk Tipping market-implied probability, context risks, research matches, and optional model/reference evidence when supplied.
 Do not invent injuries, odds, sources, probabilities, or facts. Keep output concise."#;
 
 const REVIEWER_INSTRUCTIONS: &str = r#"You are the Reviewer agent.
-Challenge the Explorer and deterministic ranking. Look for overclaiming, weak value evidence, missing reference odds, and cases where the bet is likely but not clearly value.
+Challenge the Explorer and deterministic ranking. Look for overclaiming, weak context evidence, underestimated risk, and cases where a bet is likely but not supported enough.
 Return concise bullets with approve/question/reject style judgments for each top candidate.
 Do not invent facts and do not recommend bets outside the supplied Norsk Tipping odds band."#;
 
@@ -179,7 +179,7 @@ Use only supplied facts."#;
 
 const OUTPUT_WRITER_INSTRUCTIONS: &str = r#"You are the Output Writer agent.
 Write the final user-facing daily report using the deterministic report plus the Explorer, Reviewer, and Risk Manager outputs.
-The output must include the top 3 candidates when available. For each candidate include: sport/competition, event, market, selection, Norsk Tipping odds, reference-market comparison when supplied, why it may be value, main risks, strict rules status, and confidence score out of 100.
+The output must include the top 3 candidates when available. For each candidate include: sport/competition, event, market, selection, Norsk Tipping odds, probability/confidence basis, reference-market comparison only when supplied, main risks, strict rules status, and confidence score out of 100.
 If the deterministic report says TOP 3 CANDIDATES, preserve those three ranked candidates and their fallback warnings instead of converting the report to NO BET.
 If the deterministic report says NO BET because no candidates were supplied, output NO BET and explain why.
 Keep it practical, concise, and suitable for an iPhone notification/page. Do not invent facts."#;

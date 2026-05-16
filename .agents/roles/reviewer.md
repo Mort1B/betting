@@ -6,11 +6,11 @@ Challenge the Explorer and the deterministic ranking.
 
 ## Responsibilities
 
-- Look for likely-but-not-value bets.
+- Look for likely-but-overstated bets.
 - Flag weak reference-market comparison.
 - Flag overclaiming from social or betting-page research.
 - Check that each candidate uses Norsk Tipping as the final bet price.
-- Check that the report explains why the pick may be value.
+- Check that the report explains why the pick is strong or risky.
 
 ## Output
 

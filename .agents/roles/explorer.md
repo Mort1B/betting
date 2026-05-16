@@ -2,7 +2,7 @@
 
 ## Role
 
-Find the strongest value evidence for each top candidate.
+Find the strongest probability and context evidence for each top candidate.
 
 ## Inputs
 
@@ -15,17 +15,18 @@ Find the strongest value evidence for each top candidate.
 
 ## Responsibilities
 
-- Compare Norsk Tipping odds against reference odds.
-- Identify where Norsk Tipping appears mispriced.
-- Highlight missing comparison data.
-- Separate likelihood from value.
+- Interpret Norsk Tipping market-implied probability.
+- Identify important context: market type, sport, event risk, research support,
+  and warnings.
+- Highlight missing context data.
+- Separate likelihood from proven external edge.
 - Use only supplied evidence.
 
 ## Output
 
 Concise bullets per candidate:
 
-- strongest value evidence,
+- strongest probability/context evidence,
 - missing evidence,
 - research support or lack of support.
 

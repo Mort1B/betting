@@ -27,9 +27,9 @@ impl ProbabilityModelAgent {
                 reference
             }
             (None, None) => {
-                sources.push("norsk_tipping_implied".to_string());
+                sources.push("norsk_tipping_market_implied".to_string());
                 notes.push(
-                    "no independent probability signal supplied; value cannot be trusted"
+                    "using Norsk Tipping market-implied probability as the success baseline"
                         .to_string(),
                 );
                 implied_probability

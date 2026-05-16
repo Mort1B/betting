@@ -1,8 +1,9 @@
 # Betting Daily Agent
 
-Daily agentic betting workflow for finding the best value candidates on Norsk
-Tipping. The system can consider any sport or league, but the final bet price is
-always the current Norsk Tipping odds.
+Daily agentic betting workflow for finding the strongest Norsk Tipping
+candidates by success probability, confidence, context risk, and research. The
+system can consider any sport or league, but the final bet price is always the
+current Norsk Tipping odds.
 
 The daily target is a top-3 shortlist inside the configured odds band, default
 `1.15-1.30`. If strict gates or the date filter would empty the report, the
@@ -87,16 +88,15 @@ Live source controls:
   sport.
 - `BETTING_NT_EARLIEST_START` defaults to the current Oslo timestamp in the
   static publisher so already-started events are skipped.
-- `BETTING_REFERENCE_ODDS_CSV=/path/to/reference_odds.csv` enriches live
-  candidates with independent reference-market prices. If a root
-  `reference_odds.csv` file exists, the scripts use it automatically.
+- `BETTING_REFERENCE_ODDS_CSV=/path/to/reference_odds.csv` optionally adds
+  external comparison prices for audit context. It is not required.
 - `BETTING_CANDIDATE_SOURCE=csv` uses `BETTING_INPUT_CSV` instead.
 
-## Reference Odds Enrichment
+## Optional Reference Odds
 
-Live Norsk Tipping prices are the final bet prices, not independent value
-evidence. To promote live candidates from fallback status to strict value
-candidates, add comparable external prices through `--reference-odds`.
+Live Norsk Tipping prices are the final bet prices. External comparison odds are
+optional and are not required for the daily workflow. Use `--reference-odds`
+only when you want an extra audit note from your own collected comparison data.
 
 ```bash
 cargo run -- --norsk-tipping-live \
@@ -147,18 +147,15 @@ Defaults:
 
 - Norsk Tipping odds: `1.15-1.30`.
 - Minimum estimated probability: `79%`.
-- Minimum edge versus Norsk Tipping implied probability: `1.5` percentage
-  points.
 - Minimum confidence: `65%`.
-- Minimum expected value: `0%`.
+- Minimum edge and expected value: enforced only when `model_probability` or
+  `reference_odds` is supplied.
 
-A candidate without `model_probability` or `reference_odds` is rejected because
-Norsk Tipping implied probability alone cannot prove value.
-
-Live Norsk Tipping imports therefore appear as fallback candidates until a real
-independent model probability or reference-market comparison is supplied. They
-are still ranked and published so the daily report contains 3 candidates when a
-tradable same-day board exists.
+Live Norsk Tipping imports use market-implied probability as the success
+baseline, then the risk layer adjusts confidence for context such as market type,
+sport, entertainment/special markets, friendlies, injuries, rotation, weather,
+and research warnings. This keeps the default workflow focused on the best
+available candidates without requiring external odds.
 
 The daily report still returns the top 3 ranked candidates when strict gates or
 the date filter would otherwise leave the report empty. Fallback candidates are
@@ -202,8 +199,8 @@ Supported source kinds:
 - `reddit_json`
 - `html`
 
-Research is treated as weak supporting evidence. It must not override hard value
-and risk gates.
+Research is treated as weak supporting evidence. It can adjust confidence, but
+it must not override hard probability, confidence, and odds-band gates.
 
 ## Security Guardrails
 

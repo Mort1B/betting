@@ -80,7 +80,7 @@ pub(crate) fn candidates_from_events(
                     confidence: Some(live_confidence(decimal_odds)),
                     starts_at: starts_at.to_string(),
                     notes: format!(
-                        "live Norsk Tipping import; no independent model/reference odds supplied yet; event_id={event_id}; market={market_name}; selection_id={selection_id}"
+                        "live Norsk Tipping import; probability starts from market-implied price and context checks; event_id={event_id}; market={market_name}; selection_id={selection_id}"
                     ),
                 });
             }

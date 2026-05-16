@@ -1,6 +1,6 @@
 # Agent Contract
 
-This repository is an agentic betting workflow for daily Norsk Tipping value
+This repository is an agentic betting workflow for daily Norsk Tipping candidate
 selection. It combines deterministic Rust agents, OpenAI review agents, GitHub
 Actions automation, and GitHub Pages publishing.
 
@@ -11,8 +11,9 @@ Produce a daily top-3 shortlist of bets that:
 - use Norsk Tipping as the final bet price,
 - stay inside the configured odds band, default `1.15-1.30`,
 - can come from any sport or league,
-- compare Norsk Tipping odds against independent signals,
-- explain value and risk,
+- rank by probability, confidence, context risk, and research,
+- use optional independent signals when available,
+- explain strength and risk,
 - output top-3 best available candidates when candidates exist,
 - output `NO BET` only when there are no candidates to rank.
 
@@ -25,8 +26,8 @@ Produce a daily top-3 shortlist of bets that:
   scheduled publisher.
 - Optionally enriches candidates from `reference_odds.csv` before scoring.
 - Filters candidates.
-- Calculates probability, edge, expected value, and confidence.
-- Rejects candidates without independent probability evidence.
+- Calculates probability, confidence, contextual risk, and optional value/edge.
+- Does not require external comparison odds for live Norsk Tipping candidates.
 - Produces the compact top-3 deterministic report.
 
 `OpenAI Review Layer`
@@ -52,16 +53,16 @@ https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.txt
 
 `Explorer`
 
-- Finds strongest value evidence.
-- Compares Norsk Tipping odds against reference odds, model probability, EV,
-  edge, and research.
-- Flags missing comparison data.
+- Finds the strongest available candidate evidence.
+- Reviews probability, context risk, confidence, optional value/edge, and
+  research.
+- Flags missing context that affects confidence.
 
 `Reviewer`
 
 - Challenges the ranking.
-- Finds weak value evidence and overclaiming.
-- Distinguishes likely bets from value bets.
+- Finds weak evidence and overclaiming.
+- Distinguishes likely bets from bets with proven external edge.
 
 `Risk Manager`
 
