@@ -39,7 +39,10 @@ This is intentionally optimized:
 
 - Writes the final top-3 user-facing report.
 - Includes sport, competition, event, market, selection, Norsk Tipping odds,
-  reference-market comparison, rationale, risks, and confidence.
+  reference-market comparison, rationale, risks, strict-rule status, and
+  confidence score out of 100.
+- Preserves fallback warnings when the deterministic report had to fill the top
+  3 from best available candidates.
 
 ## Model
 

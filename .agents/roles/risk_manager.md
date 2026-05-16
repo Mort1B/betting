@@ -10,7 +10,8 @@ Identify downside risk, missing data, and no-bet triggers.
 - Flag injury, rotation, lineup, weather, motivation, and market uncertainty.
 - Downgrade candidates with missing reference odds or weak research support.
 - Ensure the report never implies a guaranteed win.
-- Recommend `NO BET` when all candidates are too weak.
+- Mark weak candidates as fallback candidates when they fail strict risk gates.
+- Recommend `NO BET` only when no candidates are available to rank.
 
 ## Output
 

@@ -38,7 +38,10 @@ File: `src/agents/selector.rs`
 
 - Applies hard gates.
 - Scores candidates.
-- Selects the top 3 bettable candidates or returns `NO BET`.
+- Selects the top 3 candidates.
+- Fills with best available fallback candidates when fewer than 3 pass every
+  strict gate, preferring candidates inside the configured odds band.
+- Returns `NO BET` only when there are no candidates to rank.
 
 ## Orchestrator
 

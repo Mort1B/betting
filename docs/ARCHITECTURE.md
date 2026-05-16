@@ -57,8 +57,11 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 
 - Applies hard gates for probability, value, confidence, and expected value.
 - Scores bettable candidates with a success-first value score.
-- Selects the top 3 bettable candidates for the daily report.
-- Returns `NO BET` when the board does not meet the rules.
+- Selects the top 3 candidates for the daily report.
+- Fills with best available fallback candidates when fewer than 3 pass every
+  strict gate, preferring candidates inside the requested Norsk Tipping odds
+  band before any outside-band fallback.
+- Returns `NO BET` only when there are no candidates to rank.
 
 `OpenAI Agent Workflow`
 
@@ -99,7 +102,8 @@ cargo run -- candidates.csv --date YYYY-MM-DD --research examples/research_sourc
 
 5. Configure `OPENAI_API_KEY` in GitHub Secrets so the scheduled workflow can run
    the four-agent API review. See `docs/OPENAI_API_SETUP.md`.
-6. Place no bet if the tool says `NO BET`.
+6. Treat fallback candidates as weaker options and place no bet if the report
+   says `NO BET`.
 7. For morning delivery, schedule `scripts/daily_betting.sh` with cron and set
    either the SMTP environment variables or the Pushover environment variables.
 

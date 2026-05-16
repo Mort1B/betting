@@ -40,15 +40,26 @@ impl DailyBetOrchestrator {
         candidates: Vec<BetCandidate>,
         research_digest: Option<&ResearchDigest>,
     ) -> RecommendationDecision {
-        let candidates = self
+        let date_screened = self
             .odds_screening_agent
-            .screen_by_date(candidates, &self.rules);
+            .screen_by_date(candidates.clone(), &self.rules);
+        let used_date_fallback = self.rules.date.is_some() && date_screened.is_empty();
+        let candidates = if used_date_fallback {
+            candidates
+        } else {
+            date_screened
+        };
         let mut evaluated = Vec::new();
 
         for candidate in candidates {
             let mut rejection_reasons = self
                 .odds_screening_agent
                 .screen_by_odds(&candidate, &self.rules);
+            if let (true, Some(date)) = (used_date_fallback, &self.rules.date) {
+                rejection_reasons.push(format!(
+                    "no candidate matched requested date {date}; using best available loaded board"
+                ));
+            }
             let probability = self.probability_model_agent.assess(&candidate);
             let value = self.value_agent.assess(&candidate, &probability);
             let research = assess_candidate_research(&candidate, research_digest);
@@ -130,6 +141,8 @@ mod tests {
             vec![
                 candidate("weak", 1.22, Some(0.805), Some(0.72)),
                 candidate("best", 1.27, Some(0.835), Some(0.78)),
+                candidate("solid", 1.18, Some(0.870), Some(0.74)),
+                candidate("third", 1.20, Some(0.860), Some(0.72)),
                 candidate("outside", 1.34, Some(0.86), Some(0.80)),
             ],
             None,
@@ -139,6 +152,9 @@ mod tests {
             RecommendationDecision::Bet { selected, .. } => {
                 assert_eq!(selected.candidate.id, "best");
                 assert!(selected.is_bettable());
+            }
+            RecommendationDecision::BestAvailable { reason, .. } => {
+                panic!("expected strict bet, got fallback candidates: {reason}")
             }
             RecommendationDecision::NoBet { reason, .. } => panic!("expected bet, got {reason}"),
         }
@@ -150,15 +166,56 @@ mod tests {
             .recommend(vec![candidate("unsupported", 1.21, None, Some(0.85))], None);
 
         match recommendation {
-            RecommendationDecision::NoBet { reviewed, .. } => {
+            RecommendationDecision::BestAvailable { picks, .. } => {
                 assert!(
-                    reviewed[0]
+                    picks[0]
                         .rejection_reasons
                         .contains(&"missing independent probability signal".to_string())
                 );
             }
             RecommendationDecision::Bet { .. } => {
                 panic!("unsupported candidate should not be selected")
+            }
+            RecommendationDecision::NoBet { reason, .. } => {
+                panic!("expected fallback candidate, got no bet: {reason}")
+            }
+        }
+    }
+
+    #[test]
+    fn fills_top_three_from_best_available_when_date_has_no_matches() {
+        let rules = BettingRules {
+            date: Some("2026-05-16".to_string()),
+            ..BettingRules::default()
+        };
+        let recommendation = DailyBetOrchestrator::new(rules).recommend(
+            vec![
+                candidate("one", 1.22, Some(0.805), Some(0.72)),
+                candidate("two", 1.27, Some(0.835), Some(0.78)),
+                candidate("three", 1.18, Some(0.870), Some(0.74)),
+                candidate("outside", 1.34, Some(0.900), Some(0.90)),
+            ],
+            None,
+        );
+
+        match recommendation {
+            RecommendationDecision::BestAvailable { picks, reason } => {
+                assert_eq!(picks.len(), 3);
+                assert!(
+                    picks
+                        .iter()
+                        .all(|pick| pick.candidate.norsk_tipping_odds <= 1.30)
+                );
+                assert!(reason.contains("no candidate passed every strict gate"));
+                assert!(picks.iter().all(|pick| {
+                    pick.rejection_reasons
+                        .iter()
+                        .any(|reason| reason.contains("no candidate matched requested date"))
+                }));
+            }
+            RecommendationDecision::Bet { .. } => panic!("date fallback should not be strict bet"),
+            RecommendationDecision::NoBet { reason, .. } => {
+                panic!("expected top 3 fallback candidates, got no bet: {reason}")
             }
         }
     }

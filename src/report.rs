@@ -26,18 +26,30 @@ pub fn render_recommendation(
             alternatives,
         } => {
             output.push_str("Decision: BET\n\n");
-            output.push_str("Top 3 bets:\n\n");
+            output.push_str("Top 3 candidates:\n\n");
             push_ranked_candidate_details(&mut output, 1, selected);
             for (index, alternative) in alternatives.iter().enumerate() {
                 output.push('\n');
                 push_ranked_candidate_details(&mut output, index + 2, alternative);
             }
         }
+        RecommendationDecision::BestAvailable { reason, picks } => {
+            output.push_str("Decision: TOP 3 CANDIDATES\n");
+            output.push_str(&format!("Reason: {reason}\n\n"));
+            output.push_str("These are ranked best available candidates, not guaranteed picks. Check the strict rules status before placing a bet.\n\n");
+            output.push_str("Top 3 candidates:\n\n");
+            for (index, candidate) in picks.iter().enumerate() {
+                if index > 0 {
+                    output.push('\n');
+                }
+                push_ranked_candidate_details(&mut output, index + 1, candidate);
+            }
+        }
         RecommendationDecision::NoBet { reason, reviewed } => {
             output.push_str("Decision: NO BET\n");
             output.push_str(&format!("Reason: {reason}\n\n"));
             if reviewed.is_empty() {
-                output.push_str("No candidates matched the date filter.\n");
+                output.push_str("No candidates were available to rank.\n");
             } else {
                 output.push_str("Closest reviewed candidates:\n");
                 for candidate in reviewed {
@@ -106,6 +118,18 @@ fn push_candidate_details(output: &mut String, candidate: &EvaluatedCandidate) {
         "Confidence: {:.2}%\n",
         candidate.risk.confidence * 100.0
     ));
+    output.push_str(&format!(
+        "Confidence score: {}/100\n",
+        (candidate.risk.confidence * 100.0).round() as u32
+    ));
+    if candidate.is_bettable() {
+        output.push_str("Strict rules status: pass\n");
+    } else {
+        output.push_str(&format!(
+            "Strict rules status: fallback candidate ({})\n",
+            candidate.rejection_reasons.join("; ")
+        ));
+    }
     output.push_str(&format!(
         "Research: reviewed {} page(s), matched {}, positive {}, warnings {}\n",
         candidate.research.pages_reviewed,

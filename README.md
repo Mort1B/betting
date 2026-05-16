@@ -5,7 +5,9 @@ Tipping. The system can consider any sport or league, but the final bet price is
 always the current Norsk Tipping odds.
 
 The daily target is a top-3 shortlist inside the configured odds band, default
-`1.15-1.30`. If the slate is too weak, the correct output is `NO BET`.
+`1.15-1.30`. If strict gates or the date filter would empty the report, the
+tool still publishes the top 3 best available candidates with confidence scores
+and fallback warnings.
 
 ## Current Setup
 
@@ -110,6 +112,12 @@ Defaults:
 
 A candidate without `model_probability` or `reference_odds` is rejected because
 Norsk Tipping implied probability alone cannot prove value.
+
+The daily report still returns the top 3 ranked candidates when strict gates or
+the date filter would otherwise leave the report empty. Fallback candidates are
+labelled with their failed strict-rule checks and include a `Confidence score`
+out of 100, so the report remains useful without hiding weak or stale input
+data.
 
 ## Agent Workflow
 

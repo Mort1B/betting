@@ -83,31 +83,92 @@ impl DailySelectionAgent {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        let selected_index = evaluated.iter().position(EvaluatedCandidate::is_bettable);
-        if let Some(index) = selected_index {
-            let selected = evaluated.remove(index);
-            let alternatives = evaluated
-                .into_iter()
-                .filter(EvaluatedCandidate::is_bettable)
-                .take(2)
-                .collect();
-            return RecommendationDecision::Bet {
-                selected: Box::new(selected),
-                alternatives,
+        if evaluated.is_empty() {
+            let reason = if let Some(date) = &rules.date {
+                format!("no candidates were supplied for {date}")
+            } else {
+                "no candidates were supplied".to_string()
+            };
+            return RecommendationDecision::NoBet {
+                reason,
+                reviewed: Vec::new(),
             };
         }
 
-        let reason = if let Some(date) = &rules.date {
-            format!("no candidate on {date} passed odds, value, probability, and confidence gates")
+        let mut picks = Vec::new();
+        for candidate in evaluated.iter().filter(|candidate| candidate.is_bettable()) {
+            if picks.len() == 3 {
+                break;
+            }
+            picks.push(candidate.clone());
+        }
+        self.fill_from_best_available(&mut picks, &evaluated, rules, true);
+        self.fill_from_best_available(&mut picks, &evaluated, rules, false);
+
+        if picks.is_empty() {
+            let reason = if let Some(date) = &rules.date {
+                format!("no candidates were supplied for {date}")
+            } else {
+                "no candidates were supplied".to_string()
+            };
+            return RecommendationDecision::NoBet {
+                reason,
+                reviewed: Vec::new(),
+            };
+        }
+
+        if picks.iter().all(EvaluatedCandidate::is_bettable) {
+            let selected = picks.remove(0);
+            return RecommendationDecision::Bet {
+                selected: Box::new(selected),
+                alternatives: picks,
+            };
+        }
+
+        let strict_count = picks
+            .iter()
+            .filter(|candidate| candidate.is_bettable())
+            .count();
+        let reason = if strict_count == 0 {
+            "no candidate passed every strict gate; showing the best available ranked candidates"
+                .to_string()
         } else {
-            "no candidate passed odds, value, probability, and confidence gates".to_string()
+            format!(
+                "only {strict_count} candidate(s) passed every strict gate; filling the top 3 with best available fallbacks"
+            )
         };
 
-        RecommendationDecision::NoBet {
-            reason,
-            reviewed: evaluated.into_iter().take(6).collect(),
+        RecommendationDecision::BestAvailable { reason, picks }
+    }
+
+    fn fill_from_best_available(
+        &self,
+        picks: &mut Vec<EvaluatedCandidate>,
+        evaluated: &[EvaluatedCandidate],
+        rules: &BettingRules,
+        require_odds_band: bool,
+    ) {
+        for candidate in evaluated {
+            if picks.len() == 3 {
+                break;
+            }
+            if require_odds_band
+                && !is_inside_requested_odds_band(candidate.candidate.norsk_tipping_odds, rules)
+            {
+                continue;
+            }
+            if !picks
+                .iter()
+                .any(|picked: &EvaluatedCandidate| picked.candidate.id == candidate.candidate.id)
+            {
+                picks.push(candidate.clone());
+            }
         }
     }
+}
+
+fn is_inside_requested_odds_band(odds: f64, rules: &BettingRules) -> bool {
+    odds >= rules.min_odds && odds <= rules.max_odds
 }
 
 fn odds_band_fit(odds: f64) -> f64 {

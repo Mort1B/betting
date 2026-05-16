@@ -57,8 +57,9 @@ Edit `.env`, then add a crontab entry. `BETTING_DELIVERY` can be `email`,
 0 8 * * * /home/morten/Prog/betting/scripts/daily_betting.sh >> /home/morten/Prog/betting/daily.log 2>&1
 ```
 
-The script uses the current local date by default. If no candidate passes the
-rules, the delivered report says `NO BET`.
+The script uses the current local date by default. If the date filter or strict
+rules would leave the report empty, the delivered report still includes the top
+3 best available candidates with confidence scores and strict-rule warnings.
 
 For reliable daily delivery, run the cron job on an always-on machine. See
 `docs/DEPLOYMENT.md`.

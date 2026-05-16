@@ -146,6 +146,10 @@ pub enum RecommendationDecision {
         selected: Box<EvaluatedCandidate>,
         alternatives: Vec<EvaluatedCandidate>,
     },
+    BestAvailable {
+        reason: String,
+        picks: Vec<EvaluatedCandidate>,
+    },
     NoBet {
         reason: String,
         reviewed: Vec<EvaluatedCandidate>,

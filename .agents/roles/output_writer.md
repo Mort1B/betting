@@ -6,8 +6,10 @@ Write the final user-facing report.
 
 ## Responsibilities
 
-- Produce the final top-3 report when candidates pass the gates.
-- Output `NO BET` when no candidate is good enough.
+- Produce the final top-3 report whenever candidates are available.
+- Preserve fallback warnings when fewer than 3 candidates pass every strict
+  gate.
+- Output `NO BET` only when no candidates are available to rank.
 - Keep the report concise enough for iPhone reading.
 - Preserve Norsk Tipping as the final price.
 - Include value evidence and risk for each pick.
@@ -22,6 +24,8 @@ Write the final user-facing report.
 - reference-market comparison when supplied,
 - estimated probability,
 - expected value and edge,
+- strict rules status,
+- confidence score out of 100,
 - confidence,
 - main risk,
 - concise explanation.
