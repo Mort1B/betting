@@ -22,7 +22,7 @@ export BETTING_EMAIL_TO="you@example.com"
 Run:
 
 ```bash
-cargo run -- examples/norsk_tipping_candidates.csv \
+cargo run -- --norsk-tipping-live \
   --date 2026-05-15 \
   --research examples/research_sources.txt \
   --send-email
@@ -42,7 +42,7 @@ export BETTING_PUSHOVER_USER="your-user-key"
 Run:
 
 ```bash
-cargo run -- examples/norsk_tipping_candidates.csv \
+cargo run -- --norsk-tipping-live \
   --date 2026-05-15 \
   --research examples/research_sources.txt \
   --send-pushover

@@ -3,6 +3,25 @@
 The runtime is a deterministic multi-agent pipeline coordinated by
 `DailyBetOrchestrator`.
 
+## Candidate Sources
+
+`Norsk Tipping Live Source`
+
+- Used by the scheduled GitHub Pages publisher by default.
+- Requests same-day sport and event boards from the public Oddsen sportsbook
+  content endpoint.
+- Converts Norsk Tipping fractional price fields into decimal odds.
+- Emits candidates only inside the configured odds band, default `1.15-1.30`.
+- Skips events earlier than the live-source cutoff passed by the publisher.
+- Leaves `model_probability` and `reference_odds` empty because the source is
+  the final bet price, not independent value evidence.
+
+`CSV Source`
+
+- Kept for fixtures, manual research, fallback tests, and custom candidate
+  files.
+- Supports `model_probability`, `reference_odds`, `confidence`, and notes.
+
 ## Agents
 
 `OddsScreeningAgent`
@@ -77,7 +96,8 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 
 Norsk Tipping odds already include Norsk Tipping's price and margin. A low odds
 selection can be likely to win and still be a poor value bet. The system
-therefore refuses to call a candidate valuable unless the CSV includes either:
+therefore refuses to call a candidate valuable unless the candidate includes
+either:
 
 - `model_probability`, or
 - `reference_odds`.
@@ -88,8 +108,8 @@ constraint is that the final price must be the current Norsk Tipping price.
 
 ## Daily Workflow
 
-1. Collect current Norsk Tipping candidates in the `1.15-1.30` band from any
-   sport or league.
+1. Collect current Norsk Tipping candidates in the `1.15-1.30` band from live
+   Oddsen data across any available sport or league.
 2. Add independent model probabilities or reference prices from comparable
    markets.
 3. Add confidence and risk notes after checking injury, lineup, motivation, and
@@ -97,7 +117,7 @@ constraint is that the final price must be the current Norsk Tipping price.
 4. Run with research enabled:
 
 ```bash
-cargo run -- candidates.csv --date YYYY-MM-DD --research examples/research_sources.txt
+cargo run -- --norsk-tipping-live --date YYYY-MM-DD --research examples/research_sources.txt
 ```
 
 5. Configure `OPENAI_API_KEY` in GitHub Secrets so the scheduled workflow can run
@@ -109,8 +129,8 @@ cargo run -- candidates.csv --date YYYY-MM-DD --research examples/research_sourc
 
 ## Next Extension Points
 
-- Add a dedicated Norsk Tipping provider if a stable, permitted export or API is
-  available.
+- Add an independent reference-odds provider so live Norsk Tipping candidates
+  can be promoted from fallback candidates to strict value candidates.
 - Add sport-specific probability agents for football, tennis, hockey, and
   basketball.
 - Add a closing-line-value tracker so the daily process can measure whether the

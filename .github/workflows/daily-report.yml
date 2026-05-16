@@ -45,7 +45,8 @@ jobs:
         env:
           BETTING_REPO_DIR: ${{ github.workspace }}
           BETTING_PUBLIC_DIR: ${{ github.workspace }}/public
-          BETTING_INPUT_CSV: ${{ github.workspace }}/examples/norsk_tipping_candidates.csv
+          BETTING_CANDIDATE_SOURCE: norsk-tipping-live
+          BETTING_NT_EVENTS_PER_SPORT: "35"
           BETTING_RESEARCH_SOURCES: ${{ github.workspace }}/examples/research_sources.txt
           BETTING_REPORT_TOKEN: ${{ secrets.BETTING_REPORT_TOKEN }}
           BETTING_ENABLE_AI: "true"

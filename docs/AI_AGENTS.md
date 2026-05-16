@@ -69,7 +69,7 @@ The implementation uses the OpenAI Responses API.
 ## Local Run
 
 ```bash
-OPENAI_API_KEY=... cargo run -- examples/norsk_tipping_candidates.csv \
+OPENAI_API_KEY=... cargo run -- --norsk-tipping-live \
   --date 2026-05-15 \
   --research examples/research_sources.txt \
   --ai \

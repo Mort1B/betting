@@ -12,6 +12,8 @@ and fallback warnings.
 ## Current Setup
 
 - Rust CLI for deterministic candidate scoring.
+- Live Norsk Tipping Oddsen loader for same-day candidates.
+- CSV candidate input for fixtures, manual runs, and fallback testing.
 - Visible agent definitions in `.agents/`.
 - Four OpenAI API review agents: `Explorer`, `Reviewer`, `Risk Manager`, and
   `Output Writer`.
@@ -53,7 +55,7 @@ https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.txt
 Deterministic report:
 
 ```bash
-cargo run -- examples/norsk_tipping_candidates.csv \
+cargo run -- --norsk-tipping-live \
   --date 2026-05-16 \
   --research examples/research_sources.txt
 ```
@@ -61,7 +63,7 @@ cargo run -- examples/norsk_tipping_candidates.csv \
 OpenAI reviewed report:
 
 ```bash
-OPENAI_API_KEY=... cargo run -- examples/norsk_tipping_candidates.csv \
+OPENAI_API_KEY=... cargo run -- --norsk-tipping-live \
   --date 2026-05-16 \
   --research examples/research_sources.txt \
   --ai \
@@ -77,7 +79,17 @@ BETTING_ENABLE_AI=false \
 scripts/publish_static_report.sh
 ```
 
-## Candidate CSV
+Live source controls:
+
+- `BETTING_CANDIDATE_SOURCE=norsk-tipping-live` uses the public Norsk Tipping
+  Oddsen sportsbook content endpoint. This is the scheduled default.
+- `BETTING_NT_EVENTS_PER_SPORT=35` controls how many events are requested per
+  sport.
+- `BETTING_NT_EARLIEST_START` defaults to the current Oslo timestamp in the
+  static publisher so already-started events are skipped.
+- `BETTING_CANDIDATE_SOURCE=csv` uses `BETTING_INPUT_CSV` instead.
+
+## Candidate CSV Fallback
 
 Required columns:
 
@@ -112,6 +124,11 @@ Defaults:
 
 A candidate without `model_probability` or `reference_odds` is rejected because
 Norsk Tipping implied probability alone cannot prove value.
+
+Live Norsk Tipping imports therefore appear as fallback candidates until a real
+independent model probability or reference-market comparison is supplied. They
+are still ranked and published so the daily report contains 3 candidates when a
+tradable same-day board exists.
 
 The daily report still returns the top 3 ranked candidates when strict gates or
 the date filter would otherwise leave the report empty. Fallback candidates are

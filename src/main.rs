@@ -2,6 +2,7 @@ mod agents;
 mod ai;
 mod domain;
 mod input;
+mod norsk_tipping;
 mod notify;
 mod report;
 mod research;
@@ -13,17 +14,24 @@ use agents::DailyBetOrchestrator;
 use ai::{AiOptions, run_ai_workflow};
 use domain::BettingRules;
 use input::load_candidates_from_csv;
+use norsk_tipping::LiveOddsOptions;
 use notify::{DeliveryOptions, deliver_report};
 use report::render_recommendation;
 use research::{MarketResearchClient, ResearchOptions, load_sources};
 
 #[derive(Debug)]
 struct CliOptions {
-    input_path: String,
+    source: CandidateSource,
     rules: BettingRules,
     research: ResearchOptions,
     delivery: DeliveryOptions,
     ai: AiOptions,
+}
+
+#[derive(Debug)]
+enum CandidateSource {
+    Csv(String),
+    NorskTippingLive(LiveOddsOptions),
 }
 
 fn main() {
@@ -46,7 +54,7 @@ fn main() {
         }
     };
 
-    let candidates = match load_candidates_from_csv(&options.input_path) {
+    let candidates = match load_candidates(&options.source, &options.rules) {
         Ok(candidates) => candidates,
         Err(error) => {
             eprintln!("failed to load candidates: {error}");
@@ -92,16 +100,23 @@ impl CliOptions {
     where
         I: Iterator<Item = String>,
     {
-        let input_path = args
-            .next()
-            .ok_or_else(|| "missing input CSV path".to_string())?;
-
         let mut rules = BettingRules::default();
         let mut research = ResearchOptions::default();
         let mut delivery = DeliveryOptions::default();
         let mut ai = AiOptions::default();
+        let mut input_path = None;
+        let mut use_norsk_tipping_live = false;
+        let mut live_options = LiveOddsOptions::default();
         while let Some(flag) = args.next() {
             match flag.as_str() {
+                "--norsk-tipping-live" => use_norsk_tipping_live = true,
+                "--nt-events-per-sport" => {
+                    live_options.events_per_sport = parse_usize(&mut args, "--nt-events-per-sport")?
+                }
+                "--nt-earliest-start" => {
+                    live_options.earliest_start =
+                        Some(next_value(&mut args, "--nt-earliest-start")?)
+                }
                 "--date" => rules.date = Some(next_value(&mut args, "--date")?),
                 "--min-odds" => rules.min_odds = parse_f64(&mut args, "--min-odds")?,
                 "--max-odds" => rules.max_odds = parse_f64(&mut args, "--max-odds")?,
@@ -130,13 +145,30 @@ impl CliOptions {
                 "--ai-max-output-tokens" => {
                     ai.max_output_tokens = parse_u32(&mut args, "--ai-max-output-tokens")?;
                 }
-                unknown => return Err(format!("unknown option: {unknown}")),
+                value if value.starts_with("--") => return Err(format!("unknown option: {value}")),
+                value => {
+                    if input_path.replace(value.to_string()).is_some() {
+                        return Err(format!("unexpected positional argument: {value}"));
+                    }
+                }
             }
         }
 
         rules.validate()?;
+        if live_options.events_per_sport == 0 {
+            return Err("--nt-events-per-sport must be greater than 0".to_string());
+        }
+        let source = if use_norsk_tipping_live {
+            if rules.date.is_none() {
+                return Err("--norsk-tipping-live requires --date YYYY-MM-DD".to_string());
+            }
+            CandidateSource::NorskTippingLive(live_options)
+        } else {
+            CandidateSource::Csv(input_path.ok_or_else(|| "missing input CSV path".to_string())?)
+        };
+
         Ok(Self {
-            input_path,
+            source,
             rules,
             research,
             delivery,
@@ -145,9 +177,14 @@ impl CliOptions {
     }
 
     fn usage() -> &'static str {
-        "Usage: betting <norsk-tipping-candidates.csv> [options]\n\
+        "Usage:\n\
+           betting <norsk-tipping-candidates.csv> [options]\n\
+           betting --norsk-tipping-live --date YYYY-MM-DD [options]\n\
          \n\
          Options:\n\
+           --norsk-tipping-live       load live candidates from Norsk Tipping Oddsen\n\
+           --nt-events-per-sport N    live source event page size, default 35\n\
+           --nt-earliest-start TEXT   live source cutoff, e.g. 2026-05-16T16:00\n\
            --date YYYY-MM-DD          only consider events on this date\n\
            --min-odds N               default 1.15\n\
            --max-odds N               default 1.30\n\
@@ -164,6 +201,18 @@ impl CliOptions {
            --ai                       run the 4-agent OpenAI workflow\n\
            --openai-model MODEL       default gpt-5.5\n\
            --ai-max-output-tokens N   default 900 per agent"
+    }
+}
+
+fn load_candidates(
+    source: &CandidateSource,
+    rules: &BettingRules,
+) -> Result<Vec<domain::BetCandidate>, String> {
+    match source {
+        CandidateSource::Csv(path) => load_candidates_from_csv(path),
+        CandidateSource::NorskTippingLive(options) => {
+            norsk_tipping::load_candidates_from_live_odds(rules, options)
+        }
     }
 }
 
@@ -214,4 +263,76 @@ where
     let raw = next_value(args, flag)?;
     raw.parse::<u32>()
         .map_err(|_| format!("{flag} requires a positive integer, got {raw}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_csv_source_by_default() {
+        let options = CliOptions::parse(
+            [
+                "examples/norsk_tipping_candidates.csv",
+                "--date",
+                "2026-05-16",
+            ]
+            .into_iter()
+            .map(str::to_string),
+        )
+        .expect("valid options");
+
+        match options.source {
+            CandidateSource::Csv(path) => assert_eq!(path, "examples/norsk_tipping_candidates.csv"),
+            CandidateSource::NorskTippingLive(_) => panic!("expected CSV source"),
+        }
+        assert_eq!(options.rules.date.as_deref(), Some("2026-05-16"));
+    }
+
+    #[test]
+    fn parses_norsk_tipping_live_source() {
+        let options = CliOptions::parse(
+            [
+                "--norsk-tipping-live",
+                "--date",
+                "2026-05-16",
+                "--nt-events-per-sport",
+                "50",
+            ]
+            .into_iter()
+            .map(str::to_string),
+        )
+        .expect("valid options");
+
+        match options.source {
+            CandidateSource::NorskTippingLive(live) => {
+                assert_eq!(live.events_per_sport, 50);
+                assert!(live.earliest_start.is_none());
+            }
+            CandidateSource::Csv(_) => panic!("expected live source"),
+        }
+    }
+
+    #[test]
+    fn parses_norsk_tipping_live_start_cutoff() {
+        let options = CliOptions::parse(
+            [
+                "--norsk-tipping-live",
+                "--date",
+                "2026-05-16",
+                "--nt-earliest-start",
+                "2026-05-16T16:00",
+            ]
+            .into_iter()
+            .map(str::to_string),
+        )
+        .expect("valid options");
+
+        match options.source {
+            CandidateSource::NorskTippingLive(live) => {
+                assert_eq!(live.earliest_start.as_deref(), Some("2026-05-16T16:00"));
+            }
+            CandidateSource::Csv(_) => panic!("expected live source"),
+        }
+    }
 }

@@ -13,13 +13,16 @@ Produce a daily top-3 shortlist of bets that:
 - can come from any sport or league,
 - compare Norsk Tipping odds against independent signals,
 - explain value and risk,
-- output `NO BET` when the slate is not good enough.
+- output top-3 best available candidates when candidates exist,
+- output `NO BET` only when there are no candidates to rank.
 
 ## Execution Layers
 
 `Deterministic Rust Layer`
 
 - Implemented in `src/agents/`.
+- Loads same-day candidates from live Norsk Tipping Oddsen by default in the
+  scheduled publisher.
 - Filters candidates.
 - Calculates probability, edge, expected value, and confidence.
 - Rejects candidates without independent probability evidence.
@@ -75,7 +78,7 @@ https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.txt
 
 - Never invent odds, injuries, probabilities, teams, markets, sources, or
   research findings.
-- Never recommend a candidate that failed deterministic gates.
+- Never label a fallback candidate as a strict recommendation.
 - Never use reference odds as the final bet price.
 - Never treat social posts or betting pages as proof.
 - Never imply a guaranteed win.

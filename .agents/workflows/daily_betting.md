@@ -8,7 +8,9 @@ comparison signals, research evidence, and risk review.
 ## Pipeline
 
 1. `Input Loader`
-   - Reads candidate CSV data.
+   - Reads live Norsk Tipping Oddsen data by default.
+   - Keeps CSV input available for fixtures, manual candidates, and fallback
+     testing.
    - Requires `norsk_tipping_odds` as the final price.
 
 2. `Market Research Client`
@@ -41,6 +43,8 @@ comparison signals, research evidence, and risk review.
 - Edge must clear the configured minimum.
 - Confidence must clear the configured minimum.
 - Missing independent signal rejects a candidate.
+- The final report still includes the top 3 best available fallback candidates
+  when live candidates exist but strict value gates do not pass.
 
 ## Publication
 

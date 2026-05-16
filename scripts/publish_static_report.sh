@@ -10,6 +10,9 @@ TODAY="${BETTING_DATE:-$(TZ=Europe/Oslo date +%F)}"
 REPORT_TOKEN="${BETTING_REPORT_TOKEN:-${REPORT_TOKEN:-}}"
 ENABLE_AI="${BETTING_ENABLE_AI:-false}"
 OPENAI_MODEL="${BETTING_OPENAI_MODEL:-gpt-5.5}"
+CANDIDATE_SOURCE="${BETTING_CANDIDATE_SOURCE:-norsk-tipping-live}"
+NT_EVENTS_PER_SPORT="${BETTING_NT_EVENTS_PER_SPORT:-35}"
+NT_EARLIEST_START="${BETTING_NT_EARLIEST_START:-$(TZ=Europe/Oslo date +%Y-%m-%dT%H:%M)}"
 
 if [[ -z "$REPORT_TOKEN" ]]; then
   echo "BETTING_REPORT_TOKEN or REPORT_TOKEN is required" >&2
@@ -28,7 +31,21 @@ if [[ "$ENABLE_AI" == "true" || "$ENABLE_AI" == "1" ]]; then
   AI_ARGS=(--ai --openai-model "$OPENAI_MODEL")
 fi
 
-cargo run -- "$INPUT_CSV" \
+SOURCE_ARGS=()
+case "$CANDIDATE_SOURCE" in
+  csv)
+    SOURCE_ARGS=("$INPUT_CSV")
+    ;;
+  norsk-tipping-live)
+    SOURCE_ARGS=(--norsk-tipping-live --nt-events-per-sport "$NT_EVENTS_PER_SPORT" --nt-earliest-start "$NT_EARLIEST_START")
+    ;;
+  *)
+    echo "BETTING_CANDIDATE_SOURCE must be csv or norsk-tipping-live" >&2
+    exit 2
+    ;;
+esac
+
+cargo run -- "${SOURCE_ARGS[@]}" \
   --date "$TODAY" \
   --research "$RESEARCH_SOURCES" \
   "${AI_ARGS[@]}" \

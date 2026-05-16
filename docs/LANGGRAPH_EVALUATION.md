@@ -4,7 +4,8 @@ LangGraph is not necessary for the current project.
 
 The current workflow is a small fixed pipeline:
 
-1. Load Norsk Tipping candidates from CSV.
+1. Load Norsk Tipping candidates from live Oddsen data, or from CSV for
+   fixtures/manual fallback.
 2. Fetch research sources.
 3. Filter candidates by date and odds band.
 4. Score probability, value, risk, and research signals.
