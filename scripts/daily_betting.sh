@@ -22,6 +22,7 @@ CANDIDATE_SOURCE="${BETTING_CANDIDATE_SOURCE:-norsk-tipping-live}"
 NT_EVENTS_PER_SPORT="${BETTING_NT_EVENTS_PER_SPORT:-35}"
 NT_EARLIEST_START="${BETTING_NT_EARLIEST_START:-$(date +%Y-%m-%dT%H:%M)}"
 RESEARCH_SOURCES="${BETTING_RESEARCH_SOURCES:-$REPO_DIR/examples/research_sources.txt}"
+REFERENCE_ODDS_CSV="${BETTING_REFERENCE_ODDS_CSV:-}"
 TODAY="${BETTING_DATE:-$(date +%F)}"
 DELIVERY="${BETTING_DELIVERY:-pushover}"
 
@@ -46,6 +47,17 @@ esac
 
 cd "$REPO_DIR"
 
+REFERENCE_ARGS=()
+if [[ -n "$REFERENCE_ODDS_CSV" ]]; then
+  if [[ ! -f "$REFERENCE_ODDS_CSV" ]]; then
+    echo "BETTING_REFERENCE_ODDS_CSV does not exist: $REFERENCE_ODDS_CSV" >&2
+    exit 2
+  fi
+  REFERENCE_ARGS=(--reference-odds "$REFERENCE_ODDS_CSV")
+elif [[ -f "$REPO_DIR/reference_odds.csv" ]]; then
+  REFERENCE_ARGS=(--reference-odds "$REPO_DIR/reference_odds.csv")
+fi
+
 SOURCE_ARGS=()
 case "$CANDIDATE_SOURCE" in
   csv)
@@ -63,4 +75,5 @@ esac
 cargo run -- "${SOURCE_ARGS[@]}" \
   --date "$TODAY" \
   --research "$RESEARCH_SOURCES" \
+  "${REFERENCE_ARGS[@]}" \
   "${DELIVERY_ARGS[@]}"

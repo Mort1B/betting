@@ -6,6 +6,7 @@ REPO_DIR="${BETTING_REPO_DIR:-$DEFAULT_REPO_DIR}"
 PUBLIC_DIR="${BETTING_PUBLIC_DIR:-$REPO_DIR/public}"
 INPUT_CSV="${BETTING_INPUT_CSV:-$REPO_DIR/examples/norsk_tipping_candidates.csv}"
 RESEARCH_SOURCES="${BETTING_RESEARCH_SOURCES:-$REPO_DIR/examples/research_sources.txt}"
+REFERENCE_ODDS_CSV="${BETTING_REFERENCE_ODDS_CSV:-}"
 TODAY="${BETTING_DATE:-$(TZ=Europe/Oslo date +%F)}"
 REPORT_TOKEN="${BETTING_REPORT_TOKEN:-${REPORT_TOKEN:-}}"
 ENABLE_AI="${BETTING_ENABLE_AI:-false}"
@@ -31,6 +32,17 @@ if [[ "$ENABLE_AI" == "true" || "$ENABLE_AI" == "1" ]]; then
   AI_ARGS=(--ai --openai-model "$OPENAI_MODEL")
 fi
 
+REFERENCE_ARGS=()
+if [[ -n "$REFERENCE_ODDS_CSV" ]]; then
+  if [[ ! -f "$REFERENCE_ODDS_CSV" ]]; then
+    echo "BETTING_REFERENCE_ODDS_CSV does not exist: $REFERENCE_ODDS_CSV" >&2
+    exit 2
+  fi
+  REFERENCE_ARGS=(--reference-odds "$REFERENCE_ODDS_CSV")
+elif [[ -f "$REPO_DIR/reference_odds.csv" ]]; then
+  REFERENCE_ARGS=(--reference-odds "$REPO_DIR/reference_odds.csv")
+fi
+
 SOURCE_ARGS=()
 case "$CANDIDATE_SOURCE" in
   csv)
@@ -48,6 +60,7 @@ esac
 cargo run -- "${SOURCE_ARGS[@]}" \
   --date "$TODAY" \
   --research "$RESEARCH_SOURCES" \
+  "${REFERENCE_ARGS[@]}" \
   "${AI_ARGS[@]}" \
   > "$TODAY_REPORT"
 

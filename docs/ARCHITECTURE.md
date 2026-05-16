@@ -22,6 +22,17 @@ The runtime is a deterministic multi-agent pipeline coordinated by
   files.
 - Supports `model_probability`, `reference_odds`, `confidence`, and notes.
 
+`Reference Odds Enrichment`
+
+- Runs after candidate loading and before deterministic agents.
+- Reads an optional `--reference-odds` CSV.
+- Matches by exact `candidate_id`, or by normalized `event`, `market`, and
+  `selection` with optional `sport` and `competition` constraints.
+- Converts multiple matched external prices into a consensus market-implied
+  probability before setting `reference_odds`.
+- Does not overwrite `reference_odds` already present in the main candidate
+  CSV.
+
 ## Agents
 
 `OddsScreeningAgent`
@@ -111,7 +122,8 @@ constraint is that the final price must be the current Norsk Tipping price.
 1. Collect current Norsk Tipping candidates in the `1.15-1.30` band from live
    Oddsen data across any available sport or league.
 2. Add independent model probabilities or reference prices from comparable
-   markets.
+   markets. The scheduled scripts automatically use root `reference_odds.csv`
+   when that file exists.
 3. Add confidence and risk notes after checking injury, lineup, motivation, and
    market context.
 4. Run with research enabled:
@@ -129,8 +141,8 @@ cargo run -- --norsk-tipping-live --date YYYY-MM-DD --research examples/research
 
 ## Next Extension Points
 
-- Add an independent reference-odds provider so live Norsk Tipping candidates
-  can be promoted from fallback candidates to strict value candidates.
+- Add a maintained daily reference-odds feed or generated root
+  `reference_odds.csv` so the enrichment step has current external prices.
 - Add sport-specific probability agents for football, tennis, hockey, and
   basketball.
 - Add a closing-line-value tracker so the daily process can measure whether the

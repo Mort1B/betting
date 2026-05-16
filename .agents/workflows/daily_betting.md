@@ -13,27 +13,33 @@ comparison signals, research evidence, and risk review.
      testing.
    - Requires `norsk_tipping_odds` as the final price.
 
-2. `Market Research Client`
+2. `Reference Odds Enrichment`
+   - Applies optional external comparison prices from `--reference-odds`.
+   - Matches by exact candidate id or normalized event, market, and selection.
+   - Produces independent `reference_odds` without changing Norsk Tipping as the
+     final bet price.
+
+3. `Market Research Client`
    - Fetches configured Reddit JSON and HTML research sources.
    - Produces positive, warning, and price-hint signals.
 
-3. `Deterministic Rust Agents`
+4. `Deterministic Rust Agents`
    - Filter by date and odds band.
    - Estimate probability from model probability and/or reference odds.
    - Calculate edge and expected value.
    - Apply risk and research adjustments.
    - Rank bettable candidates.
 
-4. `Explorer`
+5. `Explorer`
    - Reviews the deterministic top-3 for value evidence.
 
-5. `Reviewer`
+6. `Reviewer`
    - Challenges the ranking and overclaiming.
 
-6. `Risk Manager`
+7. `Risk Manager`
    - Looks for downside risk and no-bet triggers.
 
-7. `Output Writer`
+8. `Output Writer`
    - Writes the final report for GitHub Pages and iPhone Shortcut consumption.
 
 ## Hard Gates

@@ -1,0 +1,4 @@
+# Example only. The scheduled workflow reads root reference_odds.csv when present.
+# Do not treat these stale fixture rows as live market data.
+candidate_id,source,event,market,selection,reference_odds,notes
+ex-002,Example Reference Market,Viking - Molde,Over/under,Over 1.5 goals,1.16,fixture row showing external comparison enrichment

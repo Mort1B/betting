@@ -4,6 +4,7 @@ mod domain;
 mod input;
 mod norsk_tipping;
 mod notify;
+mod reference;
 mod report;
 mod research;
 
@@ -16,6 +17,7 @@ use domain::BettingRules;
 use input::load_candidates_from_csv;
 use norsk_tipping::LiveOddsOptions;
 use notify::{DeliveryOptions, deliver_report};
+use reference::{ReferenceOddsOptions, apply_reference_odds};
 use report::render_recommendation;
 use research::{MarketResearchClient, ResearchOptions, load_sources};
 
@@ -24,6 +26,7 @@ struct CliOptions {
     source: CandidateSource,
     rules: BettingRules,
     research: ResearchOptions,
+    reference_odds: ReferenceOddsOptions,
     delivery: DeliveryOptions,
     ai: AiOptions,
 }
@@ -54,13 +57,20 @@ fn main() {
         }
     };
 
-    let candidates = match load_candidates(&options.source, &options.rules) {
+    let mut candidates = match load_candidates(&options.source, &options.rules) {
         Ok(candidates) => candidates,
         Err(error) => {
             eprintln!("failed to load candidates: {error}");
             process::exit(1);
         }
     };
+    match apply_reference_odds(candidates, &options.reference_odds) {
+        Ok(enriched) => candidates = enriched,
+        Err(error) => {
+            eprintln!("failed to apply reference odds: {error}");
+            process::exit(1);
+        }
+    }
 
     let research_digest = match load_research(&options.research) {
         Ok(digest) => digest,
@@ -102,6 +112,7 @@ impl CliOptions {
     {
         let mut rules = BettingRules::default();
         let mut research = ResearchOptions::default();
+        let mut reference_odds = ReferenceOddsOptions::default();
         let mut delivery = DeliveryOptions::default();
         let mut ai = AiOptions::default();
         let mut input_path = None;
@@ -130,6 +141,9 @@ impl CliOptions {
                 "--min-ev" => rules.min_expected_value = parse_f64(&mut args, "--min-ev")?,
                 "--research" => {
                     research.source_path = Some(next_value(&mut args, "--research")?);
+                }
+                "--reference-odds" => {
+                    reference_odds.source_path = Some(next_value(&mut args, "--reference-odds")?);
                 }
                 "--max-research-pages" => {
                     research.max_pages = parse_usize(&mut args, "--max-research-pages")?;
@@ -171,6 +185,7 @@ impl CliOptions {
             source,
             rules,
             research,
+            reference_odds,
             delivery,
             ai,
         })
@@ -193,6 +208,7 @@ impl CliOptions {
            --min-edge N               default 0.015\n\
            --min-ev N                 default 0.000\n\
            --research PATH            research source file, name|kind|url\n\
+           --reference-odds PATH      optional external reference odds CSV\n\
            --max-research-pages N     default 10\n\
            --max-research-items N     default 10 for listing sources\n\
            --send-email               send report through SMTP env vars\n\
@@ -334,5 +350,26 @@ mod tests {
             }
             CandidateSource::Csv(_) => panic!("expected live source"),
         }
+    }
+
+    #[test]
+    fn parses_reference_odds_path() {
+        let options = CliOptions::parse(
+            [
+                "--norsk-tipping-live",
+                "--date",
+                "2026-05-16",
+                "--reference-odds",
+                "reference_odds.csv",
+            ]
+            .into_iter()
+            .map(str::to_string),
+        )
+        .expect("valid options");
+
+        assert_eq!(
+            options.reference_odds.source_path.as_deref(),
+            Some("reference_odds.csv")
+        );
     }
 }

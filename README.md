@@ -87,7 +87,37 @@ Live source controls:
   sport.
 - `BETTING_NT_EARLIEST_START` defaults to the current Oslo timestamp in the
   static publisher so already-started events are skipped.
+- `BETTING_REFERENCE_ODDS_CSV=/path/to/reference_odds.csv` enriches live
+  candidates with independent reference-market prices. If a root
+  `reference_odds.csv` file exists, the scripts use it automatically.
 - `BETTING_CANDIDATE_SOURCE=csv` uses `BETTING_INPUT_CSV` instead.
+
+## Reference Odds Enrichment
+
+Live Norsk Tipping prices are the final bet prices, not independent value
+evidence. To promote live candidates from fallback status to strict value
+candidates, add comparable external prices through `--reference-odds`.
+
+```bash
+cargo run -- --norsk-tipping-live \
+  --date 2026-05-16 \
+  --reference-odds reference_odds.csv \
+  --research examples/research_sources.txt
+```
+
+Reference CSV columns:
+
+- `reference_odds`: required external decimal odds.
+- `candidate_id`: optional exact candidate id match.
+- `event`, `market`, `selection`: required together when `candidate_id` is not
+  supplied.
+- `sport`, `competition`: optional extra match constraints.
+- `source`, `notes`: optional audit text in the report notes.
+
+When multiple rows match the same candidate, the tool converts each reference
+price to implied probability, averages the probabilities, and converts the
+consensus back to decimal odds. Existing `reference_odds` in the main candidate
+CSV are not overwritten.
 
 ## Candidate CSV Fallback
 

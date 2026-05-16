@@ -23,6 +23,7 @@ Produce a daily top-3 shortlist of bets that:
 - Implemented in `src/agents/`.
 - Loads same-day candidates from live Norsk Tipping Oddsen by default in the
   scheduled publisher.
+- Optionally enriches candidates from `reference_odds.csv` before scoring.
 - Filters candidates.
 - Calculates probability, edge, expected value, and confidence.
 - Rejects candidates without independent probability evidence.
@@ -80,6 +81,7 @@ https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.txt
   research findings.
 - Never label a fallback candidate as a strict recommendation.
 - Never use reference odds as the final bet price.
+- Never use stale fixture reference odds as live comparison data.
 - Never treat social posts or betting pages as proof.
 - Never imply a guaranteed win.
 - Keep secrets out of git.

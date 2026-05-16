@@ -10,6 +10,7 @@ on:
       - "Cargo.lock"
       - "Cargo.toml"
       - "examples/**"
+      - "reference_odds.csv"
       - "scripts/publish_static_report.sh"
       - "src/**"
   schedule:

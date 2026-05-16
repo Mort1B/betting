@@ -16,6 +16,15 @@ File: `src/agents/probability.rs`
 - Estimates probability from model probability and/or reference odds.
 - Refuses to treat Norsk Tipping implied probability alone as value evidence.
 
+## Reference Odds Enrichment
+
+File: `src/reference.rs`
+
+- Applies optional external comparison prices before agent scoring.
+- Matches reference rows by candidate id or normalized event, market, and
+  selection.
+- Preserves Norsk Tipping as the final bet price.
+
 ## ValueAgent
 
 File: `src/agents/value.rs`
