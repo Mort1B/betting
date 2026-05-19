@@ -9,7 +9,7 @@ The current workflow is a small fixed pipeline:
 2. Fetch research sources.
 3. Filter candidates by date and odds band.
 4. Score probability, value, risk, and research signals.
-5. Publish a static top-3 report.
+5. Publish a static top-5 report.
 6. Optionally ask ChatGPT/Codex to review the report manually.
 
 Rust handles that pipeline clearly with simple modules and tests. Adding

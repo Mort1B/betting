@@ -44,7 +44,8 @@ pub fn assess_candidate_research(
     let terms = candidate_terms(candidate);
 
     for page in &digest.pages {
-        if page.error.is_some() {
+        if let Some(error) = &page.error {
+            notes.push(format!("source error: {}: {error}", page.source_name));
             continue;
         }
 
@@ -190,5 +191,45 @@ mod tests {
                 .iter()
                 .any(|signal| matches!(signal, ResearchSignal::PriceHint(_)))
         );
+    }
+
+    #[test]
+    fn exposes_source_errors_as_research_notes() {
+        let digest = ResearchDigest {
+            pages: vec![ResearchPage {
+                source_name: "blocked source".to_string(),
+                url: "https://example.test".to_string(),
+                title: "blocked source".to_string(),
+                text: String::new(),
+                signals: Vec::new(),
+                error: Some("returned 403".to_string()),
+            }],
+        };
+
+        let assessment = assess_candidate_research(&candidate(), Some(&digest));
+
+        assert!(
+            assessment
+                .notes
+                .iter()
+                .any(|note| note.contains("source error: blocked source: returned 403"))
+        );
+    }
+
+    fn candidate() -> BetCandidate {
+        BetCandidate {
+            id: "c1".to_string(),
+            sport: "Football".to_string(),
+            competition: "Eliteserien".to_string(),
+            event: "Rosenborg - Brann".to_string(),
+            market: "Double chance".to_string(),
+            selection: "Rosenborg or draw".to_string(),
+            norsk_tipping_odds: 1.22,
+            model_probability: None,
+            reference_odds: None,
+            confidence: Some(0.75),
+            starts_at: "2026-05-15T18:00:00+02:00".to_string(),
+            notes: String::new(),
+        }
     }
 }

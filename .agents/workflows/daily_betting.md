@@ -2,13 +2,14 @@
 
 ## Objective
 
-Produce a daily top-3 betting report using current Norsk Tipping odds,
-probability, context risk, research evidence, and optional comparison signals.
+Produce a daily football/soccer top-5 betting report using current Norsk
+Tipping odds, probability, context risk, research evidence, and optional
+comparison signals.
 
 ## Pipeline
 
 1. `Input Loader`
-   - Reads live Norsk Tipping Oddsen data by default.
+   - Reads live Norsk Tipping Oddsen football/soccer data by default.
    - Keeps CSV input available for fixtures, manual candidates, and fallback
      testing.
    - Requires `norsk_tipping_odds` as the final price.
@@ -20,7 +21,8 @@ probability, context risk, research evidence, and optional comparison signals.
      final bet price.
 
 3. `Market Research Client`
-   - Fetches configured Reddit JSON and HTML research sources.
+   - Fetches configured football Reddit JSON and HTML research sources.
+   - Uses `examples/football_research_sources.txt` by default.
    - Produces positive, warning, and price-hint signals.
 
 4. `Deterministic Rust Agents`
@@ -28,20 +30,38 @@ probability, context risk, research evidence, and optional comparison signals.
    - Estimate probability from market-implied odds, model probability, and/or
      reference odds.
    - Calculate edge and expected value only when independent inputs exist.
-   - Apply context risk and research adjustments.
+   - Apply context risk, research adjustments, and football context categories.
+   - Apply capped learning adjustments from settled historical football buckets
+     when enough similar picks exist.
    - Rank bettable candidates.
 
-5. `Explorer`
-   - Reviews the deterministic top-3 for value evidence.
+5. `Learning Note`
+   - Every pick reports whether history was unavailable, insufficient, or
+     adjusted confidence from a settled bucket.
+   - Pending, void, and unknown results are ignored for learning.
 
-6. `Reviewer`
+6. `Explorer`
+   - Reviews the deterministic top-5 for value evidence.
+
+7. `Reviewer`
    - Challenges the ranking and overclaiming.
 
-7. `Risk Manager`
+8. `Risk Manager`
    - Looks for downside risk and no-bet triggers.
 
-8. `Output Writer`
+9. `Output Writer`
    - Writes the final report for GitHub Pages and iPhone Shortcut consumption.
+
+10. `Pick History`
+   - Publishes `history.jsonl` beside `today.txt`.
+   - Fetches the previous Pages history before publishing when available.
+   - Merges current picks idempotently and preserves settled results.
+
+11. `Result Settlement`
+   - Runs only from explicit `BETTING_SETTLEMENTS_JSONL` JSON Lines records.
+   - Requires exact history keys and a settlement source.
+   - Supports `win`, `loss`, `void`, and `unknown`.
+   - Does not infer results from free-text research pages.
 
 ## Hard Gates
 
@@ -50,7 +70,7 @@ probability, context risk, research evidence, and optional comparison signals.
 - Edge must clear the configured minimum only when independent model/reference
   data exists.
 - Confidence must clear the configured minimum.
-- The final report still includes the top 3 best available fallback candidates
+- The final report still includes the top 5 best available fallback candidates
   when live candidates exist but strict value gates do not pass.
 
 ## Publication
@@ -59,6 +79,7 @@ The GitHub Action publishes:
 
 ```text
 https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.txt
+https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/history.jsonl
 ```
 
 The token is stored as `BETTING_REPORT_TOKEN` in GitHub Actions secrets.

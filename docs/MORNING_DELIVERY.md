@@ -1,6 +1,6 @@
 # Morning Delivery
 
-The program can send the daily top-3 report by email or as iPhone push
+The program can send the daily top-5 report by email or as iPhone push
 notifications.
 
 Local configuration lives in `.env`. It is ignored by git because it can contain
@@ -24,7 +24,7 @@ Run:
 ```bash
 cargo run -- --norsk-tipping-live \
   --date 2026-05-15 \
-  --research examples/research_sources.txt \
+  --research examples/football_research_sources.txt \
   --send-email
 ```
 
@@ -44,7 +44,7 @@ Run:
 ```bash
 cargo run -- --norsk-tipping-live \
   --date 2026-05-15 \
-  --research examples/research_sources.txt \
+  --research examples/football_research_sources.txt \
   --send-pushover
 ```
 
@@ -59,7 +59,7 @@ Edit `.env`, then add a crontab entry. `BETTING_DELIVERY` can be `email`,
 
 The script uses the current local date by default. If the date filter or strict
 rules would leave the report empty, the delivered report still includes the top
-3 best available candidates with confidence scores and strict-rule warnings.
+5 best available candidates with confidence scores and strict-rule warnings.
 `BETTING_REFERENCE_ODDS_CSV` is optional and only needed when you want extra
 comparison context.
 

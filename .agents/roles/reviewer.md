@@ -9,6 +9,10 @@ Challenge the Explorer and the deterministic ranking.
 - Look for likely-but-overstated bets.
 - Flag weak reference-market comparison.
 - Flag overclaiming from social or betting-page research.
+- Flag missing, stale, or unknown football context for form, injuries,
+  suspensions, motivation, lineup, schedule, and market context.
+- Challenge any learning claim when history is unavailable, insufficient, or
+  based on too few settled picks.
 - Check that each candidate uses Norsk Tipping as the final bet price.
 - Check that the report explains why the pick is strong or risky.
 
@@ -23,5 +27,6 @@ For each candidate:
 ## Prohibited
 
 - Do not add new facts.
+- Do not turn unknown context into a positive claim.
 - Do not promote a pick that failed deterministic gates.
 - Do not treat research mentions as proof.

@@ -56,7 +56,7 @@ OpenAI project can access.
 The workflow is optimized to reduce API cost:
 
 - deterministic Rust filtering happens before the model calls,
-- only the compact top-3 report is passed to the agents,
+- only the compact top-5 report is passed to the agents,
 - there are four narrow role calls,
 - each call has `max_output_tokens` capped by the Rust default.
 

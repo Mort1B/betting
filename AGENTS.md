@@ -6,15 +6,15 @@ Actions automation, and GitHub Pages publishing.
 
 ## Mission
 
-Produce a daily top-3 shortlist of bets that:
+Produce a daily top-5 shortlist of bets that:
 
 - use Norsk Tipping as the final bet price,
 - stay inside the configured odds band, default `1.15-1.30`,
-- can come from any sport or league,
+- focus on football/soccer by default,
 - rank by probability, confidence, context risk, and research,
 - use optional independent signals when available,
 - explain strength and risk,
-- output top-3 best available candidates when candidates exist,
+- output top-5 best available candidates when candidates exist,
 - output `NO BET` only when there are no candidates to rank.
 
 ## Execution Layers
@@ -22,13 +22,18 @@ Produce a daily top-3 shortlist of bets that:
 `Deterministic Rust Layer`
 
 - Implemented in `src/agents/`.
-- Loads same-day candidates from live Norsk Tipping Oddsen by default in the
-  scheduled publisher.
+- Loads same-day football/soccer candidates from live Norsk Tipping Oddsen by
+  default in the scheduled publisher.
 - Optionally enriches candidates from `reference_odds.csv` before scoring.
 - Filters candidates.
 - Calculates probability, confidence, contextual risk, and optional value/edge.
+- Adds a structured football context checklist for form, injuries/suspensions,
+  lineup/rotation, motivation, schedule/travel, weather/venue, and market
+  context.
+- Applies capped learning adjustments from settled historical football buckets
+  when enough similar win/loss picks exist.
 - Does not require external comparison odds for live Norsk Tipping candidates.
-- Produces the compact top-3 deterministic report.
+- Produces the compact top-5 deterministic report.
 
 `OpenAI Review Layer`
 
@@ -43,10 +48,14 @@ Produce a daily top-3 shortlist of bets that:
 - Daily report workflow: `.github/workflows/daily-report.yml`.
 - Security workflow: `.github/workflows/security-guardrails.yml`.
 - Static publisher: `scripts/publish_static_report.sh`.
-- Published report path:
+- Football research sources: `examples/football_research_sources.txt`.
+- Optional result settlements: explicit `BETTING_SETTLEMENTS_JSONL` JSON Lines
+  records only.
+- Published report and history paths:
 
 ```text
 https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.txt
+https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/history.jsonl
 ```
 
 ## Agent Roles
@@ -56,17 +65,24 @@ https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.txt
 - Finds the strongest available candidate evidence.
 - Reviews probability, context risk, confidence, optional value/edge, and
   research.
+- Reviews football context categories for form, injuries/suspensions, lineup,
+  motivation, schedule, weather/venue, and market context.
+- Reviews the learning note without treating no-history or insufficient-history
+  output as support.
 - Flags missing context that affects confidence.
 
 `Reviewer`
 
 - Challenges the ranking.
 - Finds weak evidence and overclaiming.
+- Flags stale or missing football context and overstated learning claims.
 - Distinguishes likely bets from bets with proven external edge.
 
 `Risk Manager`
 
 - Reviews downside risk, missing data, and no-bet triggers.
+- Downgrades or questions unresolved team news, motivation, lineup, schedule,
+  market context, and insufficient learning support.
 - Checks confidence against evidence.
 - Prevents guarantee language.
 
@@ -74,7 +90,7 @@ https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.txt
 
 - Writes the final concise report.
 - Includes sport, event, market, selection, Norsk Tipping odds, comparison,
-  rationale, risk, and confidence.
+  rationale, football checklist, learning note, risk, and confidence.
 
 ## Hard Rules
 
@@ -84,6 +100,8 @@ https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.txt
 - Never use reference odds as the final bet price.
 - Never use stale fixture reference odds as live comparison data.
 - Never treat social posts or betting pages as proof.
+- Never infer final results from unstructured text; settlement requires an
+  explicit checked result source.
 - Never imply a guaranteed win.
 - Keep secrets out of git.
 - Keep public internet automation outside cleared or classified environments

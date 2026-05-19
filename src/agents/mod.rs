@@ -1,13 +1,16 @@
 mod filter;
+mod learning;
 mod probability;
 mod risk;
 mod selector;
 mod value;
 
 use crate::domain::{BetCandidate, BettingRules, EvaluatedCandidate, RecommendationDecision};
+use crate::football_context::assess_football_context;
 use crate::research::{ResearchDigest, assess_candidate_research};
 
 use filter::OddsScreeningAgent;
+use learning::LearningAgent;
 use probability::ProbabilityModelAgent;
 use risk::RiskAgent;
 use selector::DailySelectionAgent;
@@ -20,17 +23,28 @@ pub struct DailyBetOrchestrator {
     probability_model_agent: ProbabilityModelAgent,
     value_agent: ValueAgent,
     risk_agent: RiskAgent,
+    learning_agent: LearningAgent,
     daily_selection_agent: DailySelectionAgent,
 }
 
 impl DailyBetOrchestrator {
+    #[cfg(test)]
     pub fn new(rules: BettingRules) -> Self {
+        Self::with_learning_agent(rules, LearningAgent::disabled())
+    }
+
+    pub fn from_env(rules: BettingRules) -> Result<Self, String> {
+        Ok(Self::with_learning_agent(rules, LearningAgent::from_env()?))
+    }
+
+    fn with_learning_agent(rules: BettingRules, learning_agent: LearningAgent) -> Self {
         Self {
             rules,
             odds_screening_agent: OddsScreeningAgent,
             probability_model_agent: ProbabilityModelAgent,
             value_agent: ValueAgent,
             risk_agent: RiskAgent,
+            learning_agent,
             daily_selection_agent: DailySelectionAgent,
         }
     }
@@ -63,6 +77,7 @@ impl DailyBetOrchestrator {
             let probability = self.probability_model_agent.assess(&candidate);
             let value = self.value_agent.assess(&candidate, &probability);
             let research = assess_candidate_research(&candidate, research_digest);
+            let football_context = assess_football_context(&candidate, research_digest);
             let mut risk = self.risk_agent.assess(&candidate, &probability);
             let research_adjustment = research.confidence_adjustment();
             if research_adjustment != 0.0 {
@@ -76,6 +91,29 @@ impl DailyBetOrchestrator {
                 risk.flags.push(format!(
                     "{} research warning mention(s)",
                     research.warning_mentions
+                ));
+            }
+            if football_context.confidence_adjustment != 0.0 {
+                risk.confidence =
+                    (risk.confidence + football_context.confidence_adjustment).clamp(0.0, 1.0);
+                risk.notes.push(format!(
+                    "football context confidence adjustment: {:+.2} pp",
+                    football_context.confidence_adjustment * 100.0
+                ));
+            }
+            let football_warning_count = football_context.warning_count();
+            if football_warning_count > 0 {
+                risk.flags.push(format!(
+                    "{football_warning_count} football context warning(s)"
+                ));
+            }
+            let learning = self.learning_agent.assess(&candidate, &football_context);
+            if learning.confidence_adjustment != 0.0 {
+                risk.confidence =
+                    (risk.confidence + learning.confidence_adjustment).clamp(0.0, 1.0);
+                risk.notes.push(format!(
+                    "learning confidence adjustment: {:+.2} pp",
+                    learning.confidence_adjustment * 100.0
                 ));
             }
 
@@ -96,6 +134,8 @@ impl DailyBetOrchestrator {
                 value,
                 risk,
                 research,
+                football_context,
+                learning,
                 score,
                 rejection_reasons,
             });
@@ -143,15 +183,20 @@ mod tests {
                 candidate("best", 1.27, Some(0.835), Some(0.78)),
                 candidate("solid", 1.18, Some(0.870), Some(0.74)),
                 candidate("third", 1.20, Some(0.860), Some(0.72)),
-                candidate("outside", 1.34, Some(0.86), Some(0.80)),
+                candidate("fourth", 1.19, Some(0.860), Some(0.72)),
+                candidate("fifth", 1.21, Some(0.860), Some(0.72)),
             ],
             None,
         );
 
         match recommendation {
-            RecommendationDecision::Bet { selected, .. } => {
+            RecommendationDecision::Bet {
+                selected,
+                alternatives,
+            } => {
                 assert_eq!(selected.candidate.id, "best");
                 assert!(selected.is_bettable());
+                assert_eq!(alternatives.len(), 4);
             }
             RecommendationDecision::BestAvailable { reason, .. } => {
                 panic!("expected strict bet, got fallback candidates: {reason}")
@@ -186,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn fills_top_three_from_best_available_when_date_has_no_matches() {
+    fn fills_top_five_from_best_available_when_date_has_no_matches() {
         let rules = BettingRules {
             date: Some("2026-05-16".to_string()),
             ..BettingRules::default()
@@ -196,6 +241,8 @@ mod tests {
                 candidate("one", 1.22, Some(0.805), Some(0.72)),
                 candidate("two", 1.27, Some(0.835), Some(0.78)),
                 candidate("three", 1.18, Some(0.870), Some(0.74)),
+                candidate("four", 1.19, Some(0.860), Some(0.74)),
+                candidate("five", 1.20, Some(0.860), Some(0.74)),
                 candidate("outside", 1.34, Some(0.900), Some(0.90)),
             ],
             None,
@@ -203,7 +250,7 @@ mod tests {
 
         match recommendation {
             RecommendationDecision::BestAvailable { picks, reason } => {
-                assert_eq!(picks.len(), 3);
+                assert_eq!(picks.len(), 5);
                 assert!(
                     picks
                         .iter()
@@ -218,7 +265,7 @@ mod tests {
             }
             RecommendationDecision::Bet { .. } => panic!("date fallback should not be strict bet"),
             RecommendationDecision::NoBet { reason, .. } => {
-                panic!("expected top 3 fallback candidates, got no bet: {reason}")
+                panic!("expected top 5 fallback candidates, got no bet: {reason}")
             }
         }
     }

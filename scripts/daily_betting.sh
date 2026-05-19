@@ -19,9 +19,11 @@ fi
 REPO_DIR="${BETTING_REPO_DIR:-$DEFAULT_REPO_DIR}"
 INPUT_CSV="${BETTING_INPUT_CSV:-$REPO_DIR/examples/norsk_tipping_candidates.csv}"
 CANDIDATE_SOURCE="${BETTING_CANDIDATE_SOURCE:-norsk-tipping-live}"
+SPORT_SCOPE="${BETTING_SPORT_SCOPE:-football}"
+PICK_COUNT="${BETTING_PICK_COUNT:-5}"
 NT_EVENTS_PER_SPORT="${BETTING_NT_EVENTS_PER_SPORT:-35}"
 NT_EARLIEST_START="${BETTING_NT_EARLIEST_START:-$(date +%Y-%m-%dT%H:%M)}"
-RESEARCH_SOURCES="${BETTING_RESEARCH_SOURCES:-$REPO_DIR/examples/research_sources.txt}"
+RESEARCH_SOURCES="${BETTING_RESEARCH_SOURCES:-$REPO_DIR/examples/football_research_sources.txt}"
 REFERENCE_ODDS_CSV="${BETTING_REFERENCE_ODDS_CSV:-}"
 TODAY="${BETTING_DATE:-$(date +%F)}"
 DELIVERY="${BETTING_DELIVERY:-pushover}"
@@ -74,6 +76,8 @@ esac
 
 cargo run -- "${SOURCE_ARGS[@]}" \
   --date "$TODAY" \
+  --sport-scope "$SPORT_SCOPE" \
+  --pick-count "$PICK_COUNT" \
   --research "$RESEARCH_SOURCES" \
   "${REFERENCE_ARGS[@]}" \
   "${DELIVERY_ARGS[@]}"

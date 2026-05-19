@@ -1,3 +1,5 @@
+use std::env;
+
 use crate::domain::{BettingRules, EvaluatedCandidate, RecommendationDecision};
 
 pub fn render_recommendation(
@@ -18,6 +20,7 @@ pub fn render_recommendation(
     if let Some(date) = &rules.date {
         output.push_str(&format!("Date filter: {date}\n"));
     }
+    push_run_summary(&mut output, rules, recommendation);
     output.push('\n');
 
     match recommendation {
@@ -26,7 +29,7 @@ pub fn render_recommendation(
             alternatives,
         } => {
             output.push_str("Decision: BET\n\n");
-            output.push_str("Top 3 candidates:\n\n");
+            output.push_str(&format!("Top {} candidates:\n\n", 1 + alternatives.len()));
             push_ranked_candidate_details(&mut output, 1, selected);
             for (index, alternative) in alternatives.iter().enumerate() {
                 output.push('\n');
@@ -34,10 +37,10 @@ pub fn render_recommendation(
             }
         }
         RecommendationDecision::BestAvailable { reason, picks } => {
-            output.push_str("Decision: TOP 3 CANDIDATES\n");
+            output.push_str(&format!("Decision: TOP {} CANDIDATES\n", rules.pick_count));
             output.push_str(&format!("Reason: {reason}\n\n"));
             output.push_str("These are ranked best available candidates, not guaranteed picks. Check the strict rules status before placing a bet.\n\n");
-            output.push_str("Top 3 candidates:\n\n");
+            output.push_str(&format!("Top {} candidates:\n\n", picks.len()));
             for (index, candidate) in picks.iter().enumerate() {
                 if index > 0 {
                     output.push('\n');
@@ -71,6 +74,116 @@ pub fn render_recommendation(
     }
 
     output
+}
+
+fn push_run_summary(
+    output: &mut String,
+    rules: &BettingRules,
+    recommendation: &RecommendationDecision,
+) {
+    let candidates = ranked_candidates(recommendation);
+    output.push_str(&format!(
+        "Scope: {} | Pick target: {}\n",
+        rules.sport_scope.display_name(),
+        rules.pick_count
+    ));
+    output.push_str(&format!("Pick history: {}\n", history_status()));
+    if candidates.is_empty() {
+        output.push_str("Source coverage: no ranked candidates\n");
+        output.push_str("Learning summary: no ranked candidates\n");
+        return;
+    }
+
+    output.push_str(&format!(
+        "Source coverage: {}\n",
+        source_coverage(&candidates)
+    ));
+    output.push_str(&format!(
+        "Missing context: {}\n",
+        missing_context(&candidates)
+    ));
+    output.push_str(&format!(
+        "Learning summary: {}\n",
+        learning_summary(&candidates)
+    ));
+}
+
+fn ranked_candidates(recommendation: &RecommendationDecision) -> Vec<&EvaluatedCandidate> {
+    match recommendation {
+        RecommendationDecision::Bet {
+            selected,
+            alternatives,
+        } => std::iter::once(selected.as_ref())
+            .chain(alternatives.iter())
+            .collect(),
+        RecommendationDecision::BestAvailable { picks, .. } => picks.iter().collect(),
+        RecommendationDecision::NoBet { reviewed, .. } => reviewed.iter().collect(),
+    }
+}
+
+fn history_status() -> String {
+    if env::var("BETTING_HISTORY_OUTPUT").is_ok() {
+        "enabled; writes history.jsonl".to_string()
+    } else if env::var("BETTING_HISTORY_INPUT").is_ok() {
+        "read-only history input".to_string()
+    } else {
+        "disabled for this run".to_string()
+    }
+}
+
+fn source_coverage(candidates: &[&EvaluatedCandidate]) -> String {
+    let pages_reviewed = candidates
+        .iter()
+        .map(|candidate| candidate.research.pages_reviewed)
+        .max()
+        .unwrap_or(0);
+    let matched_candidates = candidates
+        .iter()
+        .filter(|candidate| candidate.research.matched_pages > 0)
+        .count();
+    let warning_candidates = candidates
+        .iter()
+        .filter(|candidate| candidate.research.warning_mentions > 0)
+        .count();
+    let source_errors = candidates
+        .iter()
+        .flat_map(|candidate| candidate.research.notes.iter())
+        .filter(|note| note.starts_with("source error:"))
+        .count();
+
+    format!(
+        "reviewed up to {pages_reviewed} page(s); matched {matched_candidates}/{} pick(s); warnings on {warning_candidates}; source errors {source_errors}",
+        candidates.len()
+    )
+}
+
+fn missing_context(candidates: &[&EvaluatedCandidate]) -> String {
+    let unknown = candidates
+        .iter()
+        .flat_map(|candidate| candidate.football_context.categories.iter())
+        .filter(|category| category.status.label() == "unknown")
+        .count();
+    let warnings = candidates
+        .iter()
+        .map(|candidate| candidate.football_context.warning_count())
+        .sum::<usize>();
+
+    format!("{unknown} unknown checklist item(s); {warnings} warning category/categories")
+}
+
+fn learning_summary(candidates: &[&EvaluatedCandidate]) -> String {
+    let adjusted = candidates
+        .iter()
+        .filter(|candidate| candidate.learning.confidence_adjustment != 0.0)
+        .count();
+    if adjusted > 0 {
+        return format!("adjusted {adjusted}/{} pick(s)", candidates.len());
+    }
+    candidates
+        .first()
+        .and_then(|candidate| candidate.learning.notes.first())
+        .cloned()
+        .unwrap_or_else(|| "no learning note available".to_string())
 }
 
 fn push_ranked_candidate_details(output: &mut String, rank: usize, candidate: &EvaluatedCandidate) {
@@ -140,6 +253,29 @@ fn push_candidate_details(output: &mut String, candidate: &EvaluatedCandidate) {
         candidate.research.positive_mentions,
         candidate.research.warning_mentions
     ));
+    output.push_str(&format!(
+        "Football context: matched {} page(s), adjustment {:+.2} pp\n",
+        candidate.football_context.matched_pages,
+        candidate.football_context.confidence_adjustment * 100.0
+    ));
+    output.push_str(&format!(
+        "Learning: {}\n",
+        candidate.learning.notes.join("; ")
+    ));
+    output.push_str("Football context checklist:\n");
+    for category in &candidate.football_context.categories {
+        let evidence = if category.evidence.is_empty() {
+            String::new()
+        } else {
+            format!(": {}", category.evidence.join("; "))
+        };
+        output.push_str(&format!(
+            "- {}: {}{}\n",
+            category.name,
+            category.status.label(),
+            evidence
+        ));
+    }
     output.push_str(&format!("Score: {:.1}\n", candidate.score));
     output.push_str(&format!(
         "Probability sources: {}\n",
@@ -221,6 +357,22 @@ fn candidate_explanation(candidate: &EvaluatedCandidate) -> String {
             "research reviewed {} page(s) but found no candidate-specific match",
             candidate.research.pages_reviewed
         ));
+    }
+    let football_warnings = candidate.football_context.warning_count();
+    if football_warnings > 0 {
+        parts.push(format!(
+            "{football_warnings} football context warning category/categories were applied"
+        ));
+    } else if candidate.football_context.matched_pages == 0 {
+        parts.push("football context found no candidate-specific source match".to_string());
+    }
+    if candidate.learning.confidence_adjustment != 0.0 {
+        parts.push(format!(
+            "history adjusted confidence by {:+.2} pp",
+            candidate.learning.confidence_adjustment * 100.0
+        ));
+    } else if !candidate.learning.notes.is_empty() {
+        parts.push(candidate.learning.notes[0].clone());
     }
 
     parts.join("; ")

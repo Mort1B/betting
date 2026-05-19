@@ -5,13 +5,15 @@ DEFAULT_REPO_DIR="/home/morten/Prog/betting"
 REPO_DIR="${BETTING_REPO_DIR:-$DEFAULT_REPO_DIR}"
 PUBLIC_DIR="${BETTING_PUBLIC_DIR:-$REPO_DIR/public}"
 INPUT_CSV="${BETTING_INPUT_CSV:-$REPO_DIR/examples/norsk_tipping_candidates.csv}"
-RESEARCH_SOURCES="${BETTING_RESEARCH_SOURCES:-$REPO_DIR/examples/research_sources.txt}"
+RESEARCH_SOURCES="${BETTING_RESEARCH_SOURCES:-$REPO_DIR/examples/football_research_sources.txt}"
 REFERENCE_ODDS_CSV="${BETTING_REFERENCE_ODDS_CSV:-}"
 TODAY="${BETTING_DATE:-$(TZ=Europe/Oslo date +%F)}"
 REPORT_TOKEN="${BETTING_REPORT_TOKEN:-${REPORT_TOKEN:-}}"
 ENABLE_AI="${BETTING_ENABLE_AI:-false}"
 OPENAI_MODEL="${BETTING_OPENAI_MODEL:-gpt-5.5}"
 CANDIDATE_SOURCE="${BETTING_CANDIDATE_SOURCE:-norsk-tipping-live}"
+SPORT_SCOPE="${BETTING_SPORT_SCOPE:-football}"
+PICK_COUNT="${BETTING_PICK_COUNT:-5}"
 NT_EVENTS_PER_SPORT="${BETTING_NT_EVENTS_PER_SPORT:-35}"
 NT_EARLIEST_START="${BETTING_NT_EARLIEST_START:-$(TZ=Europe/Oslo date +%Y-%m-%dT%H:%M)}"
 
@@ -23,6 +25,9 @@ fi
 REPORT_DIR="$PUBLIC_DIR/$REPORT_TOKEN"
 TODAY_REPORT="$REPORT_DIR/today.txt"
 DATED_REPORT="$REPORT_DIR/$TODAY.txt"
+HISTORY_REPORT="$REPORT_DIR/history.jsonl"
+HISTORY_INPUT="$(mktemp "${TMPDIR:-/tmp}/betting-history.XXXXXX.jsonl")"
+HISTORY_URL="${BETTING_HISTORY_URL:-https://mort1b.github.io/betting/$REPORT_TOKEN/history.jsonl}"
 
 mkdir -p "$REPORT_DIR"
 cd "$REPO_DIR"
@@ -57,8 +62,18 @@ case "$CANDIDATE_SOURCE" in
     ;;
 esac
 
-cargo run -- "${SOURCE_ARGS[@]}" \
+if command -v curl >/dev/null 2>&1; then
+  if ! curl -fsSL --max-time 10 "$HISTORY_URL" -o "$HISTORY_INPUT" 2>/dev/null; then
+    : > "$HISTORY_INPUT"
+  fi
+else
+  : > "$HISTORY_INPUT"
+fi
+
+BETTING_HISTORY_INPUT="$HISTORY_INPUT" BETTING_HISTORY_OUTPUT="$HISTORY_REPORT" cargo run -- "${SOURCE_ARGS[@]}" \
   --date "$TODAY" \
+  --sport-scope "$SPORT_SCOPE" \
+  --pick-count "$PICK_COUNT" \
   --research "$RESEARCH_SOURCES" \
   "${REFERENCE_ARGS[@]}" \
   "${AI_ARGS[@]}" \

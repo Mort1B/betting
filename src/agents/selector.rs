@@ -101,7 +101,7 @@ impl DailySelectionAgent {
 
         let mut picks = Vec::new();
         for candidate in evaluated.iter().filter(|candidate| candidate.is_bettable()) {
-            if picks.len() == 3 {
+            if picks.len() == rules.pick_count {
                 break;
             }
             picks.push(candidate.clone());
@@ -136,9 +136,17 @@ impl DailySelectionAgent {
         let reason = if strict_count == 0 {
             "no candidate passed every strict gate; showing the best available ranked candidates"
                 .to_string()
+        } else if picks.len() < rules.pick_count {
+            format!(
+                "only {strict_count} candidate(s) passed every strict gate and only {} {} candidate(s) were available; showing all ranked candidates for the top {} target",
+                picks.len(),
+                rules.sport_scope.display_name(),
+                rules.pick_count
+            )
         } else {
             format!(
-                "only {strict_count} candidate(s) passed every strict gate; filling the top 3 with best available fallbacks"
+                "only {strict_count} candidate(s) passed every strict gate; filling the top {} with best available fallbacks",
+                rules.pick_count
             )
         };
 
@@ -153,7 +161,7 @@ impl DailySelectionAgent {
         require_odds_band: bool,
     ) {
         for candidate in evaluated {
-            if picks.len() == 3 {
+            if picks.len() == rules.pick_count {
                 break;
             }
             if require_odds_band

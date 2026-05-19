@@ -1,12 +1,16 @@
 mod agents;
 mod ai;
 mod domain;
+mod football_context;
+mod history;
+mod history_pipeline;
 mod input;
 mod norsk_tipping;
 mod notify;
 mod reference;
 mod report;
 mod research;
+mod settlement;
 
 use std::env;
 use std::process;
@@ -80,8 +84,18 @@ fn main() {
         }
     };
 
-    let orchestrator = DailyBetOrchestrator::new(options.rules.clone());
+    let orchestrator = match DailyBetOrchestrator::from_env(options.rules.clone()) {
+        Ok(orchestrator) => orchestrator,
+        Err(error) => {
+            eprintln!("failed to load learning history: {error}");
+            process::exit(1);
+        }
+    };
     let recommendation = orchestrator.recommend(candidates, research_digest.as_ref());
+    if let Err(error) = history_pipeline::write_history_from_env(&recommendation, &options.rules) {
+        eprintln!("failed to write pick history: {error}");
+        process::exit(1);
+    }
     let deterministic_report = render_recommendation(&options.rules, &recommendation);
     let report = match run_ai_workflow(&deterministic_report, &options.ai) {
         Ok(Some(ai_report)) => ai_report.final_output,
@@ -129,6 +143,10 @@ impl CliOptions {
                         Some(next_value(&mut args, "--nt-earliest-start")?)
                 }
                 "--date" => rules.date = Some(next_value(&mut args, "--date")?),
+                "--sport-scope" => {
+                    rules.sport_scope =
+                        domain::SportScope::parse(&next_value(&mut args, "--sport-scope")?)?
+                }
                 "--min-odds" => rules.min_odds = parse_f64(&mut args, "--min-odds")?,
                 "--max-odds" => rules.max_odds = parse_f64(&mut args, "--max-odds")?,
                 "--min-probability" => {
@@ -139,6 +157,7 @@ impl CliOptions {
                 }
                 "--min-edge" => rules.min_edge = parse_f64(&mut args, "--min-edge")?,
                 "--min-ev" => rules.min_expected_value = parse_f64(&mut args, "--min-ev")?,
+                "--pick-count" => rules.pick_count = parse_usize(&mut args, "--pick-count")?,
                 "--research" => {
                     research.source_path = Some(next_value(&mut args, "--research")?);
                 }
@@ -201,12 +220,14 @@ impl CliOptions {
            --nt-events-per-sport N    live source event page size, default 35\n\
            --nt-earliest-start TEXT   live source cutoff, e.g. 2026-05-16T16:00\n\
            --date YYYY-MM-DD          only consider events on this date\n\
+           --sport-scope TEXT         football or all, default football\n\
            --min-odds N               default 1.15\n\
            --max-odds N               default 1.30\n\
            --min-probability N        default 0.79\n\
            --min-confidence N         default 0.65\n\
            --min-edge N               default 0.015\n\
            --min-ev N                 default 0.000\n\
+           --pick-count N             default 5\n\
            --research PATH            research source file, name|kind|url\n\
            --reference-odds PATH      optional external reference odds CSV\n\
            --max-research-pages N     default 10\n\
@@ -225,7 +246,7 @@ fn load_candidates(
     rules: &BettingRules,
 ) -> Result<Vec<domain::BetCandidate>, String> {
     match source {
-        CandidateSource::Csv(path) => load_candidates_from_csv(path),
+        CandidateSource::Csv(path) => rules.filter_by_sport_scope(load_candidates_from_csv(path)?),
         CandidateSource::NorskTippingLive(options) => {
             norsk_tipping::load_candidates_from_live_odds(rules, options)
         }
@@ -314,6 +335,8 @@ mod tests {
                 "2026-05-16",
                 "--nt-events-per-sport",
                 "50",
+                "--pick-count",
+                "7",
             ]
             .into_iter()
             .map(str::to_string),
@@ -327,6 +350,7 @@ mod tests {
             }
             CandidateSource::Csv(_) => panic!("expected live source"),
         }
+        assert_eq!(options.rules.pick_count, 7);
     }
 
     #[test]

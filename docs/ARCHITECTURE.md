@@ -10,6 +10,7 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Used by the scheduled GitHub Pages publisher by default.
 - Requests same-day sport and event boards from the public Oddsen sportsbook
   content endpoint.
+- Skips non-football sport boards by default through `BETTING_SPORT_SCOPE`.
 - Converts Norsk Tipping fractional price fields into decimal odds.
 - Emits candidates only inside the configured odds band, default `1.15-1.30`.
 - Skips events earlier than the live-source cutoff passed by the publisher.
@@ -21,6 +22,8 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 
 - Kept for fixtures, manual research, fallback tests, and custom candidate
   files.
+- Uses the same football/soccer default scope as live loading unless
+  `--sport-scope all` is supplied.
 - Supports `model_probability`, `reference_odds`, `confidence`, and notes.
 
 `Reference Odds Enrichment`
@@ -40,7 +43,7 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 
 - Applies the daily date filter.
 - Enforces the requested Norsk Tipping odds band, default `1.15-1.30`, across
-  any sport or league available at Norsk Tipping.
+  football/soccer candidates by default.
 - Keeps rejected candidates visible in the final report so the decision is
   auditable.
 
@@ -75,9 +78,11 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 `MarketResearchClient`
 
 - Fetches up to 10 configured research sources per run by default.
+- Uses `examples/football_research_sources.txt` in scheduled football runs.
 - Supports Reddit JSON listing URLs and normal HTML pages.
 - Extracts the top configured Reddit posts/items from listing sources.
 - Produces page-level positive, warning, and decimal-price signals.
+- Keeps fetch failures visible as source-error research notes.
 
 `ResearchAssessment`
 
@@ -87,17 +92,65 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Treats social and betting-page findings as weak signals, not formal proof of
   value.
 
+`FootballContextAgent`
+
+- Runs after generic research matching and before final selection.
+- Adds a per-candidate checklist for form, injuries/suspensions,
+  lineup/rotation, motivation, schedule/travel, weather/venue, and market
+  context.
+- Uses candidate notes and candidate-specific research matches only.
+- Marks missing evidence as `unknown` instead of inventing team context.
+- Applies small visible confidence adjustments for positive or warning context,
+  with warning categories capped so context cannot overpower the market.
+
 `DailySelectionAgent`
 
 - Applies hard gates for odds band, probability, and confidence.
 - Applies edge and expected-value gates only when independent model/reference
   data exists.
 - Scores candidates with a success-first probability and context score.
-- Selects the top 3 candidates for the daily report.
-- Fills with best available fallback candidates when fewer than 3 pass every
+- Selects the top 5 candidates for the daily report by default.
+- Fills with best available fallback candidates when fewer than 5 pass every
   strict gate, preferring candidates inside the requested Norsk Tipping odds
   band before any outside-band fallback.
 - Returns `NO BET` only when there are no candidates to rank.
+
+`LearningAgent`
+
+- Reads settled previous pick history from `BETTING_HISTORY_INPUT` when present.
+- Applies `BETTING_SETTLEMENTS_JSONL` in memory before learning so same-run
+  checked result updates can influence today's ranking.
+- Ignores pending, void, and unknown results.
+- Builds deterministic football buckets from competition, market type, odds
+  range, selection type, and football context warning categories.
+- Requires at least 5 similar settled win/loss picks before applying an
+  adjustment.
+- Caps history confidence movement at +/-3 percentage points and emits a visible
+  learning note for every pick.
+
+`PickHistory`
+
+- Runs after deterministic selection and before optional OpenAI rewriting.
+- Writes JSON Lines entries for the current ranked picks when
+  `BETTING_HISTORY_OUTPUT` is set.
+- Reads an optional previous history file from `BETTING_HISTORY_INPUT`.
+- Merges reruns by report date, event, market, selection, and start time so the
+  same pick is not duplicated.
+- Preserves settled `win`, `loss`, or `void` statuses when the same pick is
+  regenerated as pending.
+- Stores the football context checklist snapshot that existed at pick time.
+
+`ResultSettlement`
+
+- Runs only when `BETTING_SETTLEMENTS_JSONL` points to an explicit settlement
+  JSON Lines file.
+- Requires exact history keys and a verifiable settlement source for every
+  record.
+- Accepts `win`, `loss`, `void`, and `unknown`; rejects `pending` settlement
+  records.
+- Updates only unsettled or unknown history rows.
+- Preserves already settled `win`, `loss`, and `void` rows so an unknown check
+  cannot erase a verified result.
 
 `OpenAI Agent Workflow`
 
@@ -108,6 +161,15 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Passes compact outputs between agents to reduce cost and keep each role
   focused.
 - Produces the final user-facing report through the optional `--ai` path.
+
+`Report Renderer`
+
+- Prints the configured football scope and pick target at the top of the report.
+- Shows whether pick history is enabled for the run.
+- Summarizes source coverage, source errors, missing football context, and
+  learning status before the ranked picks.
+- Keeps per-pick strict status, football checklist, learning note, research
+  notes, and fallback warnings visible.
 
 ## Probability And Context
 
@@ -124,8 +186,8 @@ and context.
 
 ## Daily Workflow
 
-1. Collect current Norsk Tipping candidates in the `1.15-1.30` band from live
-   Oddsen data across any available sport or league.
+1. Collect current Norsk Tipping football/soccer candidates in the `1.15-1.30`
+   band from live Oddsen data.
 2. Score candidates from market-implied probability, context confidence,
    research signals, and optional model/reference data.
 3. Add risk notes after checking injury, lineup, motivation, market type, and
@@ -133,20 +195,23 @@ and context.
 4. Run with research enabled:
 
 ```bash
-cargo run -- --norsk-tipping-live --date YYYY-MM-DD --research examples/research_sources.txt
+cargo run -- --norsk-tipping-live --date YYYY-MM-DD --sport-scope football --research examples/football_research_sources.txt
 ```
 
 5. Configure `OPENAI_API_KEY` in GitHub Secrets so the scheduled workflow can run
    the four-agent API review. See `docs/OPENAI_API_SETUP.md`.
-6. Treat fallback candidates as weaker options and place no bet if the report
+6. Publish `today.txt`, the dated report, and the merged `history.jsonl` file to
+   the tokenized GitHub Pages path.
+7. Optionally apply `BETTING_SETTLEMENTS_JSONL` to update prior pending history
+   rows from checked final results.
+8. Treat fallback candidates as weaker options and place no bet if the report
    says `NO BET`.
-7. For morning delivery, schedule `scripts/daily_betting.sh` with cron and set
+9. For morning delivery, schedule `scripts/daily_betting.sh` with cron and set
    either the SMTP environment variables or the Pushover environment variables.
 
 ## Next Extension Points
 
-- Add sport-specific probability agents for football, tennis, hockey, and
-  basketball.
+- Add deeper football-specific probability and context agents.
 - Add a closing-line-value tracker so the daily process can measure whether the
   selected prices beat the later market.
 - Add a small local results database to audit hit rate, expected value, and

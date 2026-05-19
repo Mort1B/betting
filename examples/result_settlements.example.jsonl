@@ -1,0 +1,4 @@
+# JSON Lines settlement records. Use exact history keys from history.jsonl.
+# This fixture matches examples/norsk_tipping_candidates.csv for smoke tests only.
+# Replace it with checked final-result records before using it for real history.
+{"report_date":"2026-05-15","candidate_id":"ex-001","event":"Rosenborg - Brann","market":"Double chance","selection":"Rosenborg or draw","starts_at":"2026-05-15T18:00:00+02:00","result_status":"win","settlement_source":"fixture example only","settled_at":"2026-05-16T10:00:00Z"}

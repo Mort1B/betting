@@ -47,8 +47,10 @@ jobs:
           BETTING_REPO_DIR: ${{ github.workspace }}
           BETTING_PUBLIC_DIR: ${{ github.workspace }}/public
           BETTING_CANDIDATE_SOURCE: norsk-tipping-live
+          BETTING_SPORT_SCOPE: football
+          BETTING_PICK_COUNT: "5"
           BETTING_NT_EVENTS_PER_SPORT: "35"
-          BETTING_RESEARCH_SOURCES: ${{ github.workspace }}/examples/research_sources.txt
+          BETTING_RESEARCH_SOURCES: ${{ github.workspace }}/examples/football_research_sources.txt
           BETTING_REPORT_TOKEN: ${{ secrets.BETTING_REPORT_TOKEN }}
           BETTING_ENABLE_AI: "true"
           BETTING_OPENAI_MODEL: gpt-5.5

@@ -2,12 +2,12 @@
 
 Daily agentic betting workflow for finding the strongest Norsk Tipping
 candidates by success probability, confidence, context risk, and research. The
-system can consider any sport or league, but the final bet price is always the
-current Norsk Tipping odds.
+scheduled workflow focuses on football/soccer by default, and the final bet
+price is always the current Norsk Tipping odds.
 
-The daily target is a top-3 shortlist inside the configured odds band, default
+The daily target is a top-5 shortlist inside the configured odds band, default
 `1.15-1.30`. If strict gates or the date filter would empty the report, the
-tool still publishes the top 3 best available candidates with confidence scores
+tool still publishes the top 5 best available candidates with confidence scores
 and fallback warnings.
 
 ## Current Setup
@@ -15,11 +15,17 @@ and fallback warnings.
 - Rust CLI for deterministic candidate scoring.
 - Live Norsk Tipping Oddsen loader for same-day candidates.
 - CSV candidate input for fixtures, manual runs, and fallback testing.
+- Structured football context checks for form, injuries/suspensions, lineups,
+  motivation, schedule/travel, weather/venue, and market context.
+- Deterministic learning from settled historical picks, capped so history cannot
+  overpower current context.
 - Visible agent definitions in `.agents/`.
 - Four OpenAI API review agents: `Explorer`, `Reviewer`, `Risk Manager`, and
   `Output Writer`.
 - GitHub Actions runs the daily report workflow.
 - GitHub Pages publishes the report to a tokenized `today.txt` URL.
+- GitHub Pages also publishes tokenized `history.jsonl` pick history for future
+  learning and audit work.
 - iPhone Shortcuts can fetch the report URL every day.
 - Security guardrails run on every push to `main`.
 
@@ -51,6 +57,12 @@ Report URL shape:
 https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.txt
 ```
 
+Pick history URL shape:
+
+```text
+https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/history.jsonl
+```
+
 ## Local Run
 
 Deterministic report:
@@ -58,7 +70,7 @@ Deterministic report:
 ```bash
 cargo run -- --norsk-tipping-live \
   --date 2026-05-16 \
-  --research examples/research_sources.txt
+  --research examples/football_research_sources.txt
 ```
 
 OpenAI reviewed report:
@@ -66,7 +78,7 @@ OpenAI reviewed report:
 ```bash
 OPENAI_API_KEY=... cargo run -- --norsk-tipping-live \
   --date 2026-05-16 \
-  --research examples/research_sources.txt \
+  --research examples/football_research_sources.txt \
   --ai \
   --openai-model gpt-5.5
 ```
@@ -84,6 +96,10 @@ Live source controls:
 
 - `BETTING_CANDIDATE_SOURCE=norsk-tipping-live` uses the public Norsk Tipping
   Oddsen sportsbook content endpoint. This is the scheduled default.
+- `BETTING_SPORT_SCOPE=football` keeps scheduled and local default runs focused
+  on football/soccer. Use `all` only for manual all-sports diagnostics.
+- `BETTING_PICK_COUNT=5` controls how many ranked picks the report should return
+  when enough candidates exist.
 - `BETTING_NT_EVENTS_PER_SPORT=35` controls how many events are requested per
   sport.
 - `BETTING_NT_EARLIEST_START` defaults to the current Oslo timestamp in the
@@ -102,7 +118,7 @@ only when you want an extra audit note from your own collected comparison data.
 cargo run -- --norsk-tipping-live \
   --date 2026-05-16 \
   --reference-odds reference_odds.csv \
-  --research examples/research_sources.txt
+  --research examples/football_research_sources.txt
 ```
 
 Reference CSV columns:
@@ -154,14 +170,32 @@ Defaults:
 Live Norsk Tipping imports use market-implied probability as the success
 baseline, then the risk layer adjusts confidence for context such as market type,
 sport, entertainment/special markets, friendlies, injuries, rotation, weather,
-and research warnings. This keeps the default workflow focused on the best
-available candidates without requiring external odds.
+research warnings, and structured football context warnings. This keeps the
+default workflow focused on the best available candidates without requiring
+external odds.
 
-The daily report still returns the top 3 ranked candidates when strict gates or
+Each reported pick includes a football context checklist covering form,
+injuries/suspensions, lineup/rotation, motivation, schedule/travel,
+weather/venue, and market context. Missing candidate-specific evidence is shown
+as `unknown` and does not create a confidence boost.
+
+When previous settled history is available, the learning layer compares today's
+pick to stable football buckets such as competition, market type, odds range,
+selection type, and warning categories. It requires at least 5 similar settled
+win/loss picks before adjusting confidence, caps that adjustment to +/-3
+percentage points, and prints the learning note in the report. Pending, void,
+and unknown results do not affect learning.
+
+The daily report still returns the top 5 ranked candidates when strict gates or
 the date filter would otherwise leave the report empty. Fallback candidates are
 labelled with their failed strict-rule checks and include a `Confidence score`
 out of 100, so the report remains useful without hiding weak or stale input
 data.
+
+The report starts with a compact run summary covering football scope, pick
+target, pick-history status, source coverage, missing football context, and the
+learning summary. Each pick then keeps its own research counts, learning note,
+strict status, and football context checklist.
 
 ## Agent Workflow
 
@@ -176,9 +210,11 @@ Deterministic Rust agents:
 OpenAI review agents:
 
 - `Explorer`: finds value evidence and missing comparison data.
-- `Reviewer`: challenges ranking, weak evidence, and overclaiming.
-- `Risk Manager`: checks downside risk and no-bet triggers.
-- `Output Writer`: writes the final concise top-3 report.
+- `Reviewer`: challenges ranking, weak football evidence, stale research, and
+  overclaiming.
+- `Risk Manager`: checks downside risk, unresolved team context, learning
+  support, and no-bet triggers.
+- `Output Writer`: writes the final concise top-5 report.
 
 Human-readable agent contracts:
 
@@ -188,11 +224,14 @@ Human-readable agent contracts:
 
 ## Research Sources
 
-Research source file:
+Scheduled football research source file:
 
 ```text
-examples/research_sources.txt
+examples/football_research_sources.txt
 ```
+
+`examples/research_sources.txt` is kept as a mixed-sport manual diagnostics
+file, but scheduled football runs use the football-specific list.
 
 Supported source kinds:
 
@@ -201,6 +240,38 @@ Supported source kinds:
 
 Research is treated as weak supporting evidence. It can adjust confidence, but
 it must not override hard probability, confidence, and odds-band gates.
+Fetch failures are shown as source-error notes so missing research is visible.
+
+## Pick History
+
+The static publisher writes `history.jsonl` beside `today.txt`. Before each
+publish it fetches the previous Pages copy, merges the current picks by report
+date, event, market, selection, and start time, and republishes the combined
+file.
+
+New picks start as `pending`. Manual or future settlement data marked as `win`,
+`loss`, or `void` is preserved on same-day reruns so a rerun cannot erase a
+settled result. Set `BETTING_HISTORY_URL` only when testing against a custom
+previous-history location.
+
+For local learning tests, point `BETTING_HISTORY_INPUT` at a history JSONL file.
+If `BETTING_SETTLEMENTS_JSONL` is also set, those checked settlements are applied
+in memory before learning buckets are calculated.
+
+## Result Settlement
+
+Set `BETTING_SETTLEMENTS_JSONL=/path/to/settlements.jsonl` to update existing
+history rows from explicit settlement records after the report is generated.
+The file must use JSON Lines with exact history keys:
+
+```json
+{"report_date":"2026-05-15","candidate_id":"ex-001","event":"Rosenborg - Brann","market":"Double chance","selection":"Rosenborg or draw","starts_at":"2026-05-15T18:00:00+02:00","result_status":"win","settlement_source":"checked final result source","settlement_source_url":"https://source-url.example/match","settled_at":"2026-05-16T10:00:00Z"}
+```
+
+Accepted statuses are `win`, `loss`, `void`, and `unknown`; `pending`
+settlement records are rejected. `settlement_source_url` is optional for manual
+checks and should be included when using a public result page. Settled `win`,
+`loss`, and `void` history rows are never overwritten by later unknown checks.
 
 ## Security Guardrails
 
@@ -228,6 +299,7 @@ It runs formatting, tests, clippy, static guardrails, and `cargo audit`.
 
 - `docs/OPENAI_API_SETUP.md`
 - `docs/GITHUB_PAGES_SHORTCUT.md`
+- `docs/FOOTBALL_DAILY_PICKS_PLAN.md`
 - `docs/AI_AGENTS.md`
 - `docs/LANGGRAPH_EVALUATION.md`
 - `docs/MORNING_DELIVERY.md`

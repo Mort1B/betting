@@ -1,0 +1,14 @@
+# name|kind|url
+# Football-only sources for the scheduled daily workflow.
+# Keep this file to pages that are allowed and practical to fetch automatically.
+# The program reads at most --max-research-pages entries, default 10.
+Football365 football news|html|https://www.football365.com/
+Forebet football today|html|https://www.forebet.com/football-tips-and-predictions-for-today?lang=en
+SportyTrader football tips|html|https://www.sportytrader.com/en/betting-tips/football/
+WinDrawWin football predictions today|html|https://www.windrawwin.com/predictions/today/
+PredictZ football predictions|html|https://www.predictz.com/predictions/
+Sports Mole football previews|html|https://www.sportsmole.co.uk/football/
+BBC football news|html|https://www.bbc.com/sport/football
+Guardian football news|html|https://www.theguardian.com/football
+Sky Sports football news|html|https://www.skysports.com/football/news
+OddsPortal football market context|html|https://www.oddsportal.com/football/
