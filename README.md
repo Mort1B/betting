@@ -95,6 +95,9 @@ Live source controls:
 
 - `BETTING_CANDIDATE_SOURCE=norsk-tipping-live` uses the public Norsk Tipping
   Oddsen sportsbook content endpoint. This is the scheduled default.
+- `docs/NORSK_TIPPING_API_PORTAL.md` records the 2026-05-19 API portal
+  discovery result. The portal is not integrated because anonymous access did
+  not expose usable sportsbook API docs or a stable OpenAPI export.
 - `BETTING_SPORT_SCOPE=football` keeps scheduled and local default runs focused
   on football/soccer. Use `all` only for manual all-sports diagnostics.
 - `BETTING_PICK_COUNT=5` controls how many ranked picks the report should return
@@ -303,6 +306,7 @@ It runs formatting, tests, clippy, static guardrails, and `cargo audit`.
 - `docs/OPENAI_API_SETUP.md`
 - `docs/GITHUB_PAGES_SHORTCUT.md`
 - `docs/FOOTBALL_DAILY_PICKS_PLAN.md`
+- `docs/NORSK_TIPPING_API_PORTAL.md`
 - `docs/AI_AGENTS.md`
 - `docs/LANGGRAPH_EVALUATION.md`
 - `docs/MORNING_DELIVERY.md`

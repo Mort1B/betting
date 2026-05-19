@@ -10,6 +10,9 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Used by the scheduled GitHub Pages publisher by default.
 - Requests same-day sport and event boards from the public Oddsen sportsbook
   content endpoint.
+- The Norsk Tipping API portal was checked on 2026-05-19 and is not integrated
+  because anonymous access does not expose usable sportsbook API documentation
+  or a stable OpenAPI export. See `docs/NORSK_TIPPING_API_PORTAL.md`.
 - Skips non-football sport boards by default through `BETTING_SPORT_SCOPE`.
 - Converts Norsk Tipping fractional price fields into decimal odds.
 - Emits candidates only inside the hard research band, default `1.10-1.35`.
@@ -218,6 +221,8 @@ cargo run -- --norsk-tipping-live --date YYYY-MM-DD --sport-scope football --res
 ## Next Extension Points
 
 - Add deeper football-specific probability and context agents.
+- Re-check the Norsk Tipping API portal only when authenticated docs,
+  permission, rate-limit details, and a stable sportsbook spec are available.
 - Add a closing-line-value tracker so the daily process can measure whether the
   selected prices beat the later market.
 - Add a small local results database to audit hit rate, expected value, and
