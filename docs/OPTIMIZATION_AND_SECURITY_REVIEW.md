@@ -269,7 +269,7 @@ Primary failure modes:
 
 ## Security Review Findings
 
-### High: Confirm Local OpenAI API Key Rotation
+### Resolved: Local OpenAI API Key Rotation
 
 Files:
 - `.env`
@@ -279,14 +279,31 @@ Issue:
 - The local ignored `.env` contained a non-empty OpenAI API key during review.
 - The key was removed from local `.env` before this document was pushed.
 - `.env` is correctly ignored and tracked-file scans did not find committed
-  secret material, but any previously exposed key should still be treated as
-  exposed until it has been revoked or rotated.
+  secret material.
 
-Recommendation:
-- Confirm that key has been revoked or rotated in the OpenAI dashboard.
+Status:
+- Resolved on 2026-05-19. The repository owner confirmed the OpenAI key was
+  rotated.
 - Keep local `.env` owner-readable only on machines that run cron.
 
-### Medium: Split Generate And Deploy Privileges
+## Practical Security Triage
+
+The repository is public by design, and current data sources are repo-controlled.
+After key rotation, none of the remaining security findings are urgent blockers.
+
+Recommended next work:
+- Add response and history byte caps. This is primarily reliability hardening:
+  oversized upstream responses should not break the daily report.
+
+Optional hardening:
+- Split generate and deploy privileges in GitHub Actions.
+- Validate research source URL schemes, with `https://` as the default.
+- Add report-token rotation guidance.
+- Replace local shell-sourced `.env` parsing if this ever runs on a shared host.
+- Pin GitHub Actions to immutable SHAs if stricter supply-chain control is
+  needed.
+
+### Optional: Split Generate And Deploy Privileges
 
 Files:
 - `.github/workflows/daily-report.yml`
@@ -303,7 +320,7 @@ Recommendation:
 - Give Pages and OIDC permissions only to the deploy job.
 - Use `actions/checkout` with `persist-credentials: false` where possible.
 
-### Medium: External Inputs Need Byte Caps
+### Recommended Robustness: External Inputs Need Byte Caps
 
 Files:
 - `src/research/fetch.rs`
@@ -324,7 +341,7 @@ Recommendation:
 - Surface oversize data as source-error or history-error notes instead of
   inventing evidence.
 
-### Low: Research Source URLs Are Not Restricted
+### Optional: Restrict Research Source URLs
 
 Files:
 - `src/research/source.rs`
@@ -339,7 +356,7 @@ Recommendation:
 - Accept only `https://` URLs by default.
 - Consider an allowlist for known research hostnames.
 
-### Low: Public Pages Output Is Tokenized, Not Authenticated
+### Accepted Design Constraint: Public Pages Output Is Tokenized
 
 Files:
 - `scripts/publish_static_report.sh`
@@ -354,7 +371,7 @@ Recommendation:
 - Add token rotation instructions.
 - Use Pushover-only delivery if report content becomes sensitive.
 
-### Low: Local `.env` Is Shell-Sourced
+### Optional Local Hardening: Local `.env` Is Shell-Sourced
 
 Files:
 - `scripts/daily_betting.sh`
@@ -367,19 +384,20 @@ Recommendation:
 - Keep `.env` owner-only readable and writable on cron hosts.
 - Replace shell sourcing with a strict key-value parser if the host is shared.
 
-### Low: CI Tooling Uses Floating Installer State
+### Optional Supply-Chain Hardening: Pin GitHub Actions To SHAs
 
 Files:
 - `.github/workflows/security-guardrails.yml`
 - `.github/workflows/daily-report.yml`
 
 Issue:
-- Workflows use major-version action tags and install `cargo-audit` at runtime.
+- Workflows use major-version action tags.
+- `cargo-audit` is version-pinned and cached, so the remaining question is only
+  whether action tags should be pinned to immutable SHAs.
 
 Recommendation:
 - Pin GitHub Actions to immutable SHAs if stricter supply-chain control is
   desired.
-- Pin or cache a known-good `cargo-audit` version.
 
 ## Security Non-Issues And Existing Controls
 
@@ -397,13 +415,15 @@ Recommendation:
 
 ## Security Follow-Up Plan
 
-1. Confirm the removed local OpenAI key has been revoked or rotated.
-2. Split generation and deployment privileges in the daily workflow.
-3. Add response and history byte caps.
-4. Validate research source URL schemes and optionally hostnames.
-5. Add report-token rotation guidance and keep public-output sensitivity limits
+1. Add response and history byte caps.
+2. Split generation and deployment privileges in the daily workflow when the
+   extra workflow separation is worth the complexity.
+3. Validate research source URL schemes and optionally hostnames before source
+   configuration becomes more dynamic.
+4. Add report-token rotation guidance and keep public-output sensitivity limits
    explicit.
-6. Update security docs to list optional Pushover secrets.
-7. Pin or cache CI security tooling.
-8. Keep the full validation command set required before pushing meaningful
+5. Update security docs to list optional Pushover secrets.
+6. Pin GitHub Actions to immutable SHAs if stricter supply-chain control is
+   needed.
+7. Keep the full validation command set required before pushing meaningful
    changes.
