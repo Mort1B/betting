@@ -35,6 +35,10 @@ behavior.
 
 ### 1. Add Stage Timing
 
+Status: completed on 2026-05-19. CLI parsing moved to `src/cli.rs` to keep
+`src/main.rs` below the 400-line policy, and timing output is gated by
+`BETTING_TIMINGS`.
+
 Files:
 - `src/main.rs`
 - `scripts/publish_static_report.sh`
