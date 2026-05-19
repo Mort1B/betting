@@ -13,14 +13,14 @@ const BASELINE_HIT_RATE: f64 = 0.80;
 
 #[derive(Debug, Clone)]
 pub struct LearningAgent {
-    entries: Vec<PickHistoryEntry>,
+    bucket_counts: HashMap<String, BucketCounts>,
     min_bucket_sample: usize,
 }
 
 impl LearningAgent {
     pub fn disabled() -> Self {
         Self {
-            entries: Vec::new(),
+            bucket_counts: HashMap::new(),
             min_bucket_sample: MIN_BUCKET_SAMPLE,
         }
     }
@@ -37,10 +37,14 @@ impl LearningAgent {
         if let Ok(settlements_path) = env::var("BETTING_SETTLEMENTS_JSONL") {
             crate::settlement::apply_settlement_file(&mut entries, &settlements_path)?;
         }
-        Ok(Self {
-            entries,
+        Ok(Self::from_entries(entries))
+    }
+
+    fn from_entries(entries: Vec<PickHistoryEntry>) -> Self {
+        Self {
+            bucket_counts: build_bucket_counts(&entries),
             min_bucket_sample: MIN_BUCKET_SAMPLE,
-        })
+        }
     }
 
     pub fn assess(
@@ -48,21 +52,23 @@ impl LearningAgent {
         candidate: &BetCandidate,
         football_context: &FootballContextAssessment,
     ) -> LearningAssessment {
-        let settled = self.settled_entries();
-        if settled.is_empty() {
+        if self.bucket_counts.is_empty() {
             return LearningAssessment::no_history();
         }
 
         let buckets = candidate_buckets(candidate, football_context);
-        let bucket_counts = build_bucket_counts(&settled);
         let Some((bucket, counts)) = buckets
             .iter()
-            .filter_map(|bucket| bucket_counts.get(bucket).map(|counts| (bucket, counts)))
+            .filter_map(|bucket| {
+                self.bucket_counts
+                    .get(bucket)
+                    .map(|counts| (bucket, counts))
+            })
             .find(|(_, counts)| counts.total() >= self.min_bucket_sample)
         else {
             let best_sample = buckets
                 .iter()
-                .filter_map(|bucket| bucket_counts.get(bucket).map(BucketCounts::total))
+                .filter_map(|bucket| self.bucket_counts.get(bucket).map(BucketCounts::total))
                 .max()
                 .unwrap_or(0);
             return LearningAssessment {
@@ -98,13 +104,6 @@ impl LearningAgent {
             )],
         }
     }
-
-    fn settled_entries(&self) -> Vec<&PickHistoryEntry> {
-        self.entries
-            .iter()
-            .filter(|entry| matches!(entry.result_status, ResultStatus::Win | ResultStatus::Loss))
-            .collect()
-    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -127,9 +126,12 @@ impl BucketCounts {
     }
 }
 
-fn build_bucket_counts(entries: &[&PickHistoryEntry]) -> HashMap<String, BucketCounts> {
+fn build_bucket_counts(entries: &[PickHistoryEntry]) -> HashMap<String, BucketCounts> {
     let mut counts = HashMap::new();
-    for entry in entries {
+    for entry in entries
+        .iter()
+        .filter(|entry| matches!(entry.result_status, ResultStatus::Win | ResultStatus::Loss))
+    {
         for bucket in history_buckets(entry) {
             counts
                 .entry(bucket)
@@ -320,10 +322,7 @@ mod tests {
         for index in wins..(wins + losses) {
             entries.push(history_entry(index, ResultStatus::Loss));
         }
-        LearningAgent {
-            entries,
-            min_bucket_sample: MIN_BUCKET_SAMPLE,
-        }
+        LearningAgent::from_entries(entries)
     }
 
     fn candidate() -> BetCandidate {

@@ -103,6 +103,9 @@ Validation:
 
 ### 4. Precompute Learning Buckets Once
 
+Status: completed on 2026-05-19. `LearningAgent` now builds settled bucket
+counts at construction time.
+
 Files:
 - `src/agents/learning.rs`
 
