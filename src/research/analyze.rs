@@ -19,6 +19,44 @@ pub struct ResearchPage {
     pub text: String,
     pub signals: Vec<ResearchSignal>,
     pub error: Option<String>,
+    search_text: String,
+}
+
+impl ResearchPage {
+    pub fn new(
+        source_name: String,
+        url: String,
+        title: String,
+        text: String,
+        signals: Vec<ResearchSignal>,
+        error: Option<String>,
+    ) -> Self {
+        let search_text = normalize_search_text(&title, &text);
+        Self {
+            source_name,
+            url,
+            title,
+            text,
+            signals,
+            error,
+            search_text,
+        }
+    }
+
+    pub fn source_error(source_name: String, url: String, error: String) -> Self {
+        Self::new(
+            source_name.clone(),
+            url,
+            source_name,
+            String::new(),
+            Vec::new(),
+            Some(error),
+        )
+    }
+
+    pub fn search_text(&self) -> &str {
+        &self.search_text
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,8 +87,10 @@ pub fn assess_candidate_research(
             continue;
         }
 
-        let haystack = format!("{} {}", page.title.to_lowercase(), page.text.to_lowercase());
-        let term_hits = terms.iter().filter(|term| haystack.contains(*term)).count();
+        let term_hits = terms
+            .iter()
+            .filter(|term| page.search_text().contains(*term))
+            .count();
         if term_hits < 2 {
             continue;
         }
@@ -157,6 +197,10 @@ fn candidate_terms(candidate: &BetCandidate) -> Vec<String> {
     terms
 }
 
+fn normalize_search_text(title: &str, text: &str) -> String {
+    format!("{title} {text}").to_lowercase()
+}
+
 fn extract_decimal_odds(text: &str) -> Vec<f64> {
     let mut odds = Vec::new();
     for token in text.split(|ch: char| !(ch.is_ascii_digit() || ch == '.')) {
@@ -196,14 +240,11 @@ mod tests {
     #[test]
     fn exposes_source_errors_as_research_notes() {
         let digest = ResearchDigest {
-            pages: vec![ResearchPage {
-                source_name: "blocked source".to_string(),
-                url: "https://example.test".to_string(),
-                title: "blocked source".to_string(),
-                text: String::new(),
-                signals: Vec::new(),
-                error: Some("returned 403".to_string()),
-            }],
+            pages: vec![ResearchPage::source_error(
+                "blocked source".to_string(),
+                "https://example.test".to_string(),
+                "returned 403".to_string(),
+            )],
         };
 
         let assessment = assess_candidate_research(&candidate(), Some(&digest));

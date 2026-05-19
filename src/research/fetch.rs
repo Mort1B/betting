@@ -108,14 +108,7 @@ fn flatten_ordered_pages(mut indexed_pages: Vec<(usize, Vec<ResearchPage>)>) -> 
 }
 
 fn source_error_page(source: &ResearchSource, error: String) -> ResearchPage {
-    ResearchPage {
-        source_name: source.name.clone(),
-        url: source.url.clone(),
-        title: source.name.clone(),
-        text: String::new(),
-        signals: Vec::new(),
-        error: Some(error),
-    }
+    ResearchPage::source_error(source.name.clone(), source.url.clone(), error)
 }
 
 fn html_page(source: &ResearchSource, body: &str) -> ResearchPage {
@@ -138,14 +131,14 @@ fn html_page(source: &ResearchSource, body: &str) -> ResearchPage {
         .unwrap_or_default();
     let signals = analyze_text(&source.name, &format!("{title} {text}"));
 
-    ResearchPage {
-        source_name: source.name.clone(),
-        url: source.url.clone(),
+    ResearchPage::new(
+        source.name.clone(),
+        source.url.clone(),
         title,
         text,
         signals,
-        error: None,
-    }
+        None,
+    )
 }
 
 fn reddit_pages(
@@ -165,18 +158,19 @@ fn reddit_pages(
             child.data.url.unwrap_or_default()
         );
         let signals = analyze_text(&source.name, &text);
-        pages.push(ResearchPage {
-            source_name: source.name.clone(),
-            url: child
-                .data
-                .permalink
-                .map(|path| format!("https://www.reddit.com{path}"))
-                .unwrap_or_else(|| source.url.clone()),
-            title: child.data.title,
+        let url = child
+            .data
+            .permalink
+            .map(|path| format!("https://www.reddit.com{path}"))
+            .unwrap_or_else(|| source.url.clone());
+        pages.push(ResearchPage::new(
+            source.name.clone(),
+            url,
+            child.data.title,
             text,
             signals,
-            error: None,
-        });
+            None,
+        ));
     }
 
     Ok(pages)
@@ -292,14 +286,14 @@ mod tests {
     }
 
     fn page(title: &str) -> ResearchPage {
-        ResearchPage {
-            source_name: title.to_string(),
-            url: format!("https://example.test/{title}"),
-            title: title.to_string(),
-            text: String::new(),
-            signals: Vec::new(),
-            error: None,
-        }
+        ResearchPage::new(
+            title.to_string(),
+            format!("https://example.test/{title}"),
+            title.to_string(),
+            String::new(),
+            Vec::new(),
+            None,
+        )
     }
 
     fn source(name: &str, url: &str) -> ResearchSource {

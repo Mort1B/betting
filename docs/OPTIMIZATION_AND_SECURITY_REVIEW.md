@@ -83,6 +83,9 @@ Validation:
 
 ### 3. Normalize Research Text Once
 
+Status: completed on 2026-05-19. `ResearchPage` now stores cached normalized
+search text reused by research and football context matching.
+
 Files:
 - `src/research/analyze.rs`
 - `src/football_context.rs`

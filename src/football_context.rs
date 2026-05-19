@@ -31,13 +31,13 @@ pub fn assess_football_context(
             if page.error.is_some() {
                 continue;
             }
-            let text = format!("{} {}", page.title, page.text).to_lowercase();
+            let text = page.search_text();
             let term_hits = terms.iter().filter(|term| text.contains(*term)).count();
             if term_hits < 2 {
                 continue;
             }
             matched_pages += 1;
-            haystacks.push((page.source_name.clone(), context_window(&text, &terms)));
+            haystacks.push((page.source_name.clone(), context_window(text, &terms)));
         }
     } else {
         notes.push("football context research disabled".to_string());
@@ -367,13 +367,13 @@ mod tests {
     }
 
     fn page(source_name: &str, title: &str, text: &str) -> ResearchPage {
-        ResearchPage {
-            source_name: source_name.to_string(),
-            url: "https://example.test".to_string(),
-            title: title.to_string(),
-            text: text.to_string(),
-            signals: vec![ResearchSignal::Warning("injury".to_string())],
-            error: None,
-        }
+        ResearchPage::new(
+            source_name.to_string(),
+            "https://example.test".to_string(),
+            title.to_string(),
+            text.to_string(),
+            vec![ResearchSignal::Warning("injury".to_string())],
+            None,
+        )
     }
 }
