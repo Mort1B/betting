@@ -184,9 +184,13 @@ Validation:
 - Confirm clean cache-miss runs still pass.
 
 ### 8. Index Reference Odds Matching
+Status: completed on 2026-05-19. Reference odds rows are indexed once by exact
+candidate id and normalized event/market/selection keys while preserving source
+order and optional sport/competition constraints.
 
 Files:
 - `src/reference.rs`
+- `src/reference/tests.rs`
 
 Plan:
 - Build lookup maps for `candidate_id` and normalized

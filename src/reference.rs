@@ -57,14 +57,12 @@ fn enrich_candidates(
     mut candidates: Vec<BetCandidate>,
     rows: &[ReferenceOddsRow],
 ) -> Vec<BetCandidate> {
+    let index = ReferenceOddsIndex::build(rows);
     for candidate in &mut candidates {
         if candidate.reference_odds.is_some() {
             continue;
         }
-        let matches = rows
-            .iter()
-            .filter(|row| row.matches(candidate))
-            .collect::<Vec<_>>();
+        let matches = index.matches(rows, candidate);
         if matches.is_empty() {
             continue;
         }
@@ -119,34 +117,98 @@ struct ReferenceOddsRow {
     notes: Option<String>,
 }
 
-impl ReferenceOddsRow {
-    fn matches(&self, candidate: &BetCandidate) -> bool {
-        if self
-            .candidate_id
-            .as_deref()
-            .is_some_and(|id| id == candidate.id)
-        {
-            return true;
+#[derive(Debug, Clone, Default)]
+struct ReferenceOddsIndex {
+    by_candidate_id: HashMap<String, Vec<usize>>,
+    by_match_key: HashMap<ReferenceMatchKey, Vec<usize>>,
+}
+
+impl ReferenceOddsIndex {
+    fn build(rows: &[ReferenceOddsRow]) -> Self {
+        let mut index = Self::default();
+        for (row_index, row) in rows.iter().enumerate() {
+            if let Some(candidate_id) = row.candidate_id.as_deref() {
+                index
+                    .by_candidate_id
+                    .entry(candidate_id.to_string())
+                    .or_default()
+                    .push(row_index);
+                continue;
+            }
+
+            if let Some(key) = row.match_key() {
+                index.by_match_key.entry(key).or_default().push(row_index);
+            }
         }
-        if self.candidate_id.is_some() {
-            return false;
+        index
+    }
+
+    fn matches<'a>(
+        &self,
+        rows: &'a [ReferenceOddsRow],
+        candidate: &BetCandidate,
+    ) -> Vec<&'a ReferenceOddsRow> {
+        let mut row_indexes = Vec::new();
+        if let Some(indexes) = self.by_candidate_id.get(&candidate.id) {
+            row_indexes.extend(indexes.iter().copied());
         }
-        required_match(self.event.as_deref(), &candidate.event)
-            && required_match(self.market.as_deref(), &candidate.market)
-            && required_match(self.selection.as_deref(), &candidate.selection)
-            && optional_match(self.sport.as_deref(), &candidate.sport)
-            && optional_match(self.competition.as_deref(), &candidate.competition)
+
+        let key = ReferenceMatchKey::from_parts(
+            &candidate.event,
+            &candidate.market,
+            &candidate.selection,
+        );
+        let sport = normalize_key(&candidate.sport);
+        let competition = normalize_key(&candidate.competition);
+        if let Some(indexes) = self.by_match_key.get(&key) {
+            row_indexes.extend(indexes.iter().copied().filter(|row_index| {
+                rows[*row_index].matches_optional_constraints(&sport, &competition)
+            }));
+        }
+
+        row_indexes.sort_unstable();
+        row_indexes.dedup();
+        row_indexes
+            .into_iter()
+            .map(|row_index| &rows[row_index])
+            .collect()
     }
 }
 
-fn required_match(reference: Option<&str>, candidate_value: &str) -> bool {
-    reference.is_some_and(|value| normalize_key(value) == normalize_key(candidate_value))
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ReferenceMatchKey {
+    event: String,
+    market: String,
+    selection: String,
 }
 
-fn optional_match(reference: Option<&str>, candidate_value: &str) -> bool {
-    reference
-        .map(|value| normalize_key(value) == normalize_key(candidate_value))
-        .unwrap_or(true)
+impl ReferenceMatchKey {
+    fn from_parts(event: &str, market: &str, selection: &str) -> Self {
+        Self {
+            event: normalize_key(event),
+            market: normalize_key(market),
+            selection: normalize_key(selection),
+        }
+    }
+}
+
+impl ReferenceOddsRow {
+    fn match_key(&self) -> Option<ReferenceMatchKey> {
+        Some(ReferenceMatchKey::from_parts(
+            self.event.as_deref()?,
+            self.market.as_deref()?,
+            self.selection.as_deref()?,
+        ))
+    }
+
+    fn matches_optional_constraints(&self, sport: &str, competition: &str) -> bool {
+        optional_normalized_match(self.sport.as_deref(), sport)
+            && optional_normalized_match(self.competition.as_deref(), competition)
+    }
+}
+
+fn optional_normalized_match(reference: Option<&str>, normalized_candidate_value: &str) -> bool {
+    reference.is_none_or(|value| normalize_key(value) == normalized_candidate_value)
 }
 
 fn consensus_reference_odds(rows: &[&ReferenceOddsRow]) -> f64 {
@@ -274,67 +336,4 @@ fn round_to_two_decimals(value: f64) -> f64 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn candidate() -> BetCandidate {
-        BetCandidate {
-            id: "nt-123".to_string(),
-            sport: "Football".to_string(),
-            competition: "Eliteserien".to_string(),
-            event: "Rosenborg - Brann".to_string(),
-            market: "Main market".to_string(),
-            selection: "Rosenborg".to_string(),
-            norsk_tipping_odds: 1.22,
-            model_probability: None,
-            reference_odds: None,
-            confidence: Some(0.72),
-            starts_at: "2026-05-16T18:00:00+02:00".to_string(),
-            notes: "live import".to_string(),
-        }
-    }
-
-    #[test]
-    fn enriches_by_candidate_id_with_consensus_reference_odds() {
-        let rows = parse_reference_rows(
-            "candidate_id,source,reference_odds,notes\n\
-             nt-123,Book A,1.15,market close\n\
-             nt-123,Book B,1.17,market close",
-        )
-        .expect("valid rows");
-
-        let enriched = enrich_candidates(vec![candidate()], &rows);
-        assert_eq!(enriched[0].reference_odds, Some(1.16));
-        assert!(enriched[0].notes.contains("reference odds consensus 1.16"));
-    }
-
-    #[test]
-    fn enriches_by_event_market_and_selection() {
-        let rows = parse_reference_rows(
-            "event,market,selection,reference_odds,source\n\
-             \"rosenborg brann\",\"main-market\",Rosenborg,1.16,Book A",
-        )
-        .expect("valid rows");
-
-        let enriched = enrich_candidates(vec![candidate()], &rows);
-        assert_eq!(enriched[0].reference_odds, Some(1.16));
-    }
-
-    #[test]
-    fn keeps_existing_reference_odds() {
-        let rows =
-            parse_reference_rows("candidate_id,reference_odds\nnt-123,1.15").expect("valid rows");
-        let mut candidate = candidate();
-        candidate.reference_odds = Some(1.20);
-
-        let enriched = enrich_candidates(vec![candidate], &rows);
-        assert_eq!(enriched[0].reference_odds, Some(1.20));
-    }
-
-    #[test]
-    fn rejects_rows_without_match_key() {
-        let error =
-            parse_reference_rows("source,reference_odds\nBook A,1.15").expect_err("invalid row");
-        assert!(error.contains("candidate_id"));
-    }
-}
+mod tests;
