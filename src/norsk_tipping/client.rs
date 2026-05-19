@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use reqwest::blocking::Client;
 use serde::Deserialize;
+use serde_json::Value;
 
 use super::models::{ClientContext, ContentId, ContentRequest, ContentResponse, Event, SportType};
 
@@ -56,7 +57,8 @@ impl LiveOddsClient {
             },
         };
 
-        self.client
+        let response = self
+            .client
             .post(CONTENT_GET_URL)
             .header("accept", "application/json")
             .header("content-type", "application/json")
@@ -65,10 +67,57 @@ impl LiveOddsClient {
             .send()
             .map_err(|error| format!("Norsk Tipping request failed: {error}"))?
             .error_for_status()
-            .map_err(|error| format!("Norsk Tipping returned an HTTP error: {error}"))?
-            .json::<T>()
-            .map_err(|error| format!("failed to parse Norsk Tipping response: {error}"))
+            .map_err(|error| format!("Norsk Tipping returned an HTTP error: {error}"))?;
+        let body = response
+            .text()
+            .map_err(|error| format!("failed to read Norsk Tipping response: {error}"))?;
+
+        parse_content_response(content_type, content_id, &body)
     }
+}
+
+fn parse_content_response<T>(content_type: &str, content_id: &str, body: &str) -> Result<T, String>
+where
+    T: for<'de> Deserialize<'de>,
+{
+    let value = serde_json::from_str::<Value>(body).map_err(|error| {
+        format!(
+            "failed to parse Norsk Tipping response JSON for {content_type} {content_id}: {error}; body: {}",
+            body_excerpt(body)
+        )
+    })?;
+
+    if value
+        .get("errorType")
+        .and_then(Value::as_str)
+        .is_some_and(|error_type| error_type == "CONTENT_NOT_FOUND")
+    {
+        return serde_json::from_value(Value::Object(
+            [("data".to_string(), Value::Array(Vec::new()))]
+                .into_iter()
+                .collect(),
+        ))
+        .map_err(|error| {
+            format!("failed to build empty Norsk Tipping response for {content_type}: {error}")
+        });
+    }
+
+    serde_json::from_value::<T>(value).map_err(|error| {
+        format!(
+            "failed to decode Norsk Tipping response for {content_type} {content_id}: {error}; body: {}",
+            body_excerpt(body)
+        )
+    })
+}
+
+fn body_excerpt(body: &str) -> String {
+    const MAX_EXCERPT_CHARS: usize = 300;
+    let trimmed = body.trim();
+    if trimmed.chars().count() <= MAX_EXCERPT_CHARS {
+        return trimmed.to_string();
+    }
+    let excerpt = trimmed.chars().take(MAX_EXCERPT_CHARS).collect::<String>();
+    format!("{excerpt}...")
 }
 
 pub(crate) fn compact_date(date: &str) -> Result<String, String> {
@@ -94,5 +143,30 @@ mod tests {
     fn compacts_iso_date_for_norsk_tipping_content_ids() {
         assert_eq!(compact_date("2026-05-16").expect("valid date"), "20260516");
         assert!(compact_date("20260516").is_err());
+    }
+
+    #[test]
+    fn content_not_found_decodes_as_empty_response() {
+        let response: ContentResponse<Event> = parse_content_response(
+            "eventListBySportTypeDay",
+            "FBL/20260519/0/35/D",
+            r#"{"errorType":"CONTENT_NOT_FOUND","data":["eventListBySportTypeDay","FBL/20260519/0/35/D","ContentServiceImpl.get()"]}"#,
+        )
+        .expect("content not found should be an empty board");
+
+        assert!(response.data.is_empty());
+    }
+
+    #[test]
+    fn decode_errors_include_response_excerpt() {
+        let error = parse_content_response::<ContentResponse<Event>>(
+            "eventListBySportTypeDay",
+            "FBL/20260519/0/35/D",
+            r#"{"data":["unexpected"]}"#,
+        )
+        .expect_err("invalid data should fail");
+
+        assert!(error.contains("eventListBySportTypeDay FBL/20260519/0/35/D"));
+        assert!(error.contains(r#""unexpected""#));
     }
 }
