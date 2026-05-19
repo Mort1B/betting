@@ -237,6 +237,26 @@ mod tests {
     }
 
     #[test]
+    fn returns_no_bet_when_no_viable_candidates_exist() {
+        let rules = BettingRules {
+            date: Some("2026-05-19".to_string()),
+            ..BettingRules::default()
+        };
+        let recommendation = DailyBetOrchestrator::new(rules).recommend(Vec::new(), None);
+
+        match recommendation {
+            RecommendationDecision::NoBet { reason, reviewed } => {
+                assert_eq!(reason, "no viable candidates were supplied for 2026-05-19");
+                assert!(reviewed.is_empty());
+            }
+            RecommendationDecision::Bet { .. } => panic!("empty slate should not be a bet"),
+            RecommendationDecision::BestAvailable { reason, .. } => {
+                panic!("empty slate should not show fallback candidates: {reason}")
+            }
+        }
+    }
+
+    #[test]
     fn fills_top_five_from_best_available_when_date_has_no_matches() {
         let rules = BettingRules {
             date: Some("2026-05-16".to_string()),

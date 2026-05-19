@@ -36,6 +36,9 @@ pub fn run_ai_workflow(
     if !options.enabled {
         return Ok(None);
     }
+    if should_skip_ai_for_empty_no_bet_report(deterministic_report) {
+        return Ok(None);
+    }
 
     let client = OpenAiClient::new(options)?;
 
@@ -138,6 +141,11 @@ impl OpenAiClient {
     }
 }
 
+fn should_skip_ai_for_empty_no_bet_report(deterministic_report: &str) -> bool {
+    deterministic_report.contains("Decision: NO BET")
+        && deterministic_report.contains("No viable bets available")
+}
+
 fn extract_output_text(value: &Value) -> Option<String> {
     if let Some(output_text) = value.get("output_text").and_then(Value::as_str) {
         return Some(output_text.to_string());
@@ -184,7 +192,7 @@ const OUTPUT_WRITER_INSTRUCTIONS: &str = r#"You are the Output Writer agent.
 Write the final user-facing daily report using the deterministic report plus the Explorer, Reviewer, and Risk Manager outputs.
 The output must include the top 5 candidates when available, preserving deterministic rank order. For each candidate include: sport/competition, event, market, selection, Norsk Tipping odds, probability/confidence basis, football context checklist summary, learning note, reference-market comparison only when supplied, main risks, strict rules status, and confidence score out of 100.
 If the deterministic report says TOP 5 CANDIDATES, preserve those five ranked candidates and their fallback warnings instead of converting the report to NO BET.
-If the deterministic report says NO BET because no candidates were supplied, output NO BET and explain why.
+If the deterministic report says NO BET because no viable candidates were supplied, output NO BET and explain why.
 Keep unknown football context visible as unknown. Keep it practical, concise, and suitable for an iPhone notification/page. Do not invent facts."#;
 
 #[cfg(test)]
@@ -222,5 +230,16 @@ mod tests {
         assert!(OUTPUT_WRITER_INSTRUCTIONS.contains("top 5 candidates"));
         assert!(OUTPUT_WRITER_INSTRUCTIONS.contains("learning note"));
         assert!(OUTPUT_WRITER_INSTRUCTIONS.contains("Do not invent facts"));
+    }
+
+    #[test]
+    fn skips_ai_for_empty_no_bet_report() {
+        let report = "Daily betting agent recommendation\n\nDecision: NO BET\n\nNo viable bets available; no candidates were available to rank.\n";
+        let options = AiOptions {
+            enabled: true,
+            ..AiOptions::default()
+        };
+
+        assert_eq!(run_ai_workflow(report, &options), Ok(None));
     }
 }

@@ -53,7 +53,8 @@ pub fn render_recommendation(
             output.push_str("Decision: NO BET\n");
             output.push_str(&format!("Reason: {reason}\n\n"));
             if reviewed.is_empty() {
-                output.push_str("No candidates were available to rank.\n");
+                output
+                    .push_str("No viable bets available; no candidates were available to rank.\n");
             } else {
                 output.push_str("Closest reviewed candidates:\n");
                 for candidate in reviewed {

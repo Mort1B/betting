@@ -34,7 +34,7 @@ pub fn load_candidates_from_live_odds(
     let compact_date = client::compact_date(date)?;
     let sport_types = client.fetch_sport_types(&compact_date)?;
     if sport_types.is_empty() {
-        return Err(format!("Norsk Tipping returned no sports for {date}"));
+        return Ok(Vec::new());
     }
 
     let mut candidates = Vec::new();
@@ -57,12 +57,7 @@ pub fn load_candidates_from_live_odds(
 
     candidates.sort_by(compare_candidates);
     if candidates.is_empty() {
-        return Err(format!(
-            "Norsk Tipping returned no {} tradable selections between {:.2} and {:.2} for {date}",
-            rules.sport_scope.display_name(),
-            rules.min_odds,
-            rules.max_odds
-        ));
+        return Ok(candidates);
     }
     Ok(candidates)
 }

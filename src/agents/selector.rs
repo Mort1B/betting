@@ -89,9 +89,9 @@ impl DailySelectionAgent {
 
         if evaluated.is_empty() {
             let reason = if let Some(date) = &rules.date {
-                format!("no candidates were supplied for {date}")
+                format!("no viable candidates were supplied for {date}")
             } else {
-                "no candidates were supplied".to_string()
+                "no viable candidates were supplied".to_string()
             };
             return RecommendationDecision::NoBet {
                 reason,
@@ -111,9 +111,9 @@ impl DailySelectionAgent {
 
         if picks.is_empty() {
             let reason = if let Some(date) = &rules.date {
-                format!("no candidates were supplied for {date}")
+                format!("no viable candidates were supplied for {date}")
             } else {
-                "no candidates were supplied".to_string()
+                "no viable candidates were supplied".to_string()
             };
             return RecommendationDecision::NoBet {
                 reason,
