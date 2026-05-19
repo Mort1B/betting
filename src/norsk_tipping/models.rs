@@ -96,13 +96,33 @@ pub(crate) struct Market {
     selections: Vec<Selection>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CandidateMarketKind {
+    Main,
+    Expanded(&'static str),
+}
+
+impl CandidateMarketKind {
+    pub(crate) fn note(&self) -> &'static str {
+        match self {
+            Self::Main => "main football market",
+            Self::Expanded(label) => label,
+        }
+    }
+}
+
 impl Market {
-    pub(crate) fn is_candidate_market(&self) -> bool {
-        self.istradable != Some(false)
-            && (self.isheadmarket == Some(true)
-                || self.ismainline == Some(true)
-                || self.name.as_deref() == Some("HUB"))
-            && !self.selections.is_empty()
+    pub(crate) fn candidate_market_kind(&self) -> Option<CandidateMarketKind> {
+        if self.istradable == Some(false) || self.selections.is_empty() {
+            return None;
+        }
+        if self.isheadmarket == Some(true)
+            || self.ismainline == Some(true)
+            || self.name.as_deref() == Some("HUB")
+        {
+            return Some(CandidateMarketKind::Main);
+        }
+        expanded_market_kind(self.name.as_deref().unwrap_or(""))
     }
 
     pub(crate) fn display_name(&self) -> String {
@@ -123,6 +143,28 @@ impl Market {
 
     pub(crate) fn selections(&self) -> impl Iterator<Item = &Selection> {
         self.selections.iter()
+    }
+}
+
+fn expanded_market_kind(name: &str) -> Option<CandidateMarketKind> {
+    let normalized = name.to_ascii_lowercase();
+    let contains_any = |terms: &[&str]| terms.iter().any(|term| normalized.contains(term));
+    if contains_any(&["begge lag scorer", "both teams to score", "btts"]) {
+        Some(CandidateMarketKind::Expanded(
+            "expanded both-teams-score market",
+        ))
+    } else if contains_any(&["goal scorer", "goalscorer", "målscorer", "anytime scorer"]) {
+        Some(CandidateMarketKind::Expanded(
+            "expanded player scorer market",
+        ))
+    } else if contains_any(&["corner", "corners", "hjørne", "hjørnespark"]) {
+        Some(CandidateMarketKind::Expanded("expanded corners market"))
+    } else if contains_any(&["card", "cards", "kort"]) {
+        Some(CandidateMarketKind::Expanded("expanded cards market"))
+    } else if contains_any(&["over/under", "over ", "under ", "totalt", "total", "mål"]) {
+        Some(CandidateMarketKind::Expanded("expanded goals market"))
+    } else {
+        None
     }
 }
 
@@ -204,5 +246,29 @@ mod tests {
         };
 
         assert!(!selection.is_live());
+    }
+
+    #[test]
+    fn accepts_supported_expanded_football_markets() {
+        let market = Market {
+            idfomarket: Some("m1".to_string()),
+            name: Some("Over/under 2.5 mål".to_string()),
+            isheadmarket: Some(false),
+            ismainline: Some(false),
+            istradable: Some(true),
+            selections: vec![Selection {
+                idfoselection: Some("s1".to_string()),
+                name: Some("Under 2.5".to_string()),
+                currentpriceup: Some(Value::String("1".to_string())),
+                currentpricedown: Some(Value::String("5".to_string())),
+                idfobolifestate: Some("N".to_string()),
+            }],
+        };
+
+        assert!(market.candidate_market_kind().is_some());
+        assert_eq!(
+            market.candidate_market_kind().map(|kind| kind.note()),
+            Some("expanded goals market")
+        );
     }
 }

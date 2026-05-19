@@ -221,8 +221,8 @@ impl CliOptions {
            --nt-earliest-start TEXT   live source cutoff, e.g. 2026-05-16T16:00\n\
            --date YYYY-MM-DD          only consider events on this date\n\
            --sport-scope TEXT         football or all, default football\n\
-           --min-odds N               default 1.15\n\
-           --max-odds N               default 1.30\n\
+           --min-odds N               preferred floor, default 1.10\n\
+           --max-odds N               preferred ceiling, default 1.30; 1.35 hard research ceiling\n\
            --min-probability N        default 0.79\n\
            --min-confidence N         default 0.65\n\
            --min-edge N               default 0.015\n\

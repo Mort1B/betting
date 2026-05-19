@@ -5,10 +5,9 @@ candidates by success probability, confidence, context risk, and research. The
 scheduled workflow focuses on football/soccer by default, and the final bet
 price is always the current Norsk Tipping odds.
 
-The daily target is a top-5 shortlist inside the configured odds band, default
-`1.15-1.30`. If strict gates or the date filter would empty the report, the
-tool still publishes the top 5 best available candidates with confidence scores
-and fallback warnings.
+The daily target is a top-5 football shortlist in the preferred odds band,
+default `1.10-1.30`. Prices from `1.30-1.35` are fallback-only slack, and the
+tool does not research or rank prices below `1.10` or above `1.35`.
 
 ## Current Setup
 
@@ -100,6 +99,8 @@ Live source controls:
   on football/soccer. Use `all` only for manual all-sports diagnostics.
 - `BETTING_PICK_COUNT=5` controls how many ranked picks the report should return
   when enough candidates exist.
+- `BETTING_MIN_ODDS=1.10` and `BETTING_MAX_ODDS=1.30` control the preferred
+  band. The Rust layer keeps `1.35` as the hard research ceiling.
 - `BETTING_NT_EVENTS_PER_SPORT=35` controls how many events are requested per
   sport.
 - `BETTING_NT_EARLIEST_START` defaults to the current Oslo timestamp in the
@@ -161,7 +162,7 @@ Important optional columns:
 
 Defaults:
 
-- Norsk Tipping odds: `1.15-1.30`.
+- Norsk Tipping preferred odds: `1.10-1.30`; hard research ceiling: `1.35`.
 - Minimum estimated probability: `79%`.
 - Minimum confidence: `65%`.
 - Minimum edge and expected value: enforced only when `model_probability` or
@@ -187,10 +188,12 @@ percentage points, and prints the learning note in the report. Pending, void,
 and unknown results do not affect learning.
 
 The daily report still returns the top 5 ranked candidates when strict gates or
-the date filter would otherwise leave the report empty. Fallback candidates are
-labelled with their failed strict-rule checks and include a `Confidence score`
-out of 100, so the report remains useful without hiding weak or stale input
-data.
+the date filter would otherwise leave the report empty. If fewer than 5 separate
+football matches are available, expanded markets such as goals, corners, cards,
+and player scorers can fill the shortlist from the games being played.
+Fallback candidates are labelled with their failed strict-rule checks and
+include a `Confidence score` out of 100, so the report remains useful without
+hiding weak or stale input data.
 
 The report starts with a compact run summary covering football scope, pick
 target, pick-history status, source coverage, missing football context, and the

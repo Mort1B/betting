@@ -21,6 +21,8 @@ INPUT_CSV="${BETTING_INPUT_CSV:-$REPO_DIR/examples/norsk_tipping_candidates.csv}
 CANDIDATE_SOURCE="${BETTING_CANDIDATE_SOURCE:-norsk-tipping-live}"
 SPORT_SCOPE="${BETTING_SPORT_SCOPE:-football}"
 PICK_COUNT="${BETTING_PICK_COUNT:-5}"
+MIN_ODDS="${BETTING_MIN_ODDS:-1.10}"
+MAX_ODDS="${BETTING_MAX_ODDS:-1.30}"
 NT_EVENTS_PER_SPORT="${BETTING_NT_EVENTS_PER_SPORT:-35}"
 NT_EARLIEST_START="${BETTING_NT_EARLIEST_START:-$(date +%Y-%m-%dT%H:%M)}"
 RESEARCH_SOURCES="${BETTING_RESEARCH_SOURCES:-$REPO_DIR/examples/football_research_sources.txt}"
@@ -78,6 +80,8 @@ cargo run -- "${SOURCE_ARGS[@]}" \
   --date "$TODAY" \
   --sport-scope "$SPORT_SCOPE" \
   --pick-count "$PICK_COUNT" \
+  --min-odds "$MIN_ODDS" \
+  --max-odds "$MAX_ODDS" \
   --research "$RESEARCH_SOURCES" \
   "${REFERENCE_ARGS[@]}" \
   "${DELIVERY_ARGS[@]}"

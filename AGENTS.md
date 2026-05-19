@@ -9,7 +9,8 @@ Actions automation, and GitHub Pages publishing.
 Produce a daily top-5 shortlist of bets that:
 
 - use Norsk Tipping as the final bet price,
-- stay inside the configured odds band, default `1.15-1.30`,
+- prefer the configured odds band, default `1.10-1.30`,
+- never research or rank prices below `1.10` or above the hard `1.35` ceiling,
 - focus on football/soccer by default,
 - rank by probability, confidence, context risk, and research,
 - use optional independent signals when available,
@@ -26,6 +27,8 @@ Produce a daily top-5 shortlist of bets that:
   default in the scheduled publisher.
 - Optionally enriches candidates from `reference_odds.csv` before scoring.
 - Filters candidates.
+- Allows several preferred markets from the same match when the football board
+  has fewer than 5 separate matches.
 - Calculates probability, confidence, contextual risk, and optional value/edge.
 - Adds a structured football context checklist for form, injuries/suspensions,
   lineup/rotation, motivation, schedule/travel, weather/venue, and market
@@ -122,6 +125,8 @@ GitHub Actions:
 
 - `BETTING_REPORT_TOKEN`
 - `OPENAI_API_KEY`
+- `BETTING_PUSHOVER_TOKEN` and `BETTING_PUSHOVER_USER` when GitHub Actions
+  should send iPhone push notifications.
 
 Local `.env` is ignored by git and may contain local-only credentials.
 

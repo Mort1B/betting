@@ -49,9 +49,14 @@ jobs:
           BETTING_CANDIDATE_SOURCE: norsk-tipping-live
           BETTING_SPORT_SCOPE: football
           BETTING_PICK_COUNT: "5"
+          BETTING_MIN_ODDS: "1.10"
+          BETTING_MAX_ODDS: "1.30"
           BETTING_NT_EVENTS_PER_SPORT: "35"
           BETTING_RESEARCH_SOURCES: ${{ github.workspace }}/examples/football_research_sources.txt
           BETTING_REPORT_TOKEN: ${{ secrets.BETTING_REPORT_TOKEN }}
+          BETTING_DELIVERY: ${{ secrets.BETTING_PUSHOVER_TOKEN != '' && secrets.BETTING_PUSHOVER_USER != '' && 'pushover' || 'none' }}
+          BETTING_PUSHOVER_TOKEN: ${{ secrets.BETTING_PUSHOVER_TOKEN }}
+          BETTING_PUSHOVER_USER: ${{ secrets.BETTING_PUSHOVER_USER }}
           BETTING_ENABLE_AI: "true"
           BETTING_OPENAI_MODEL: gpt-5.5
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

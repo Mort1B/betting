@@ -64,6 +64,21 @@ impl RiskAgent {
             }
         }
 
+        for (needle, penalty) in [
+            ("goal scorer", 0.07),
+            ("goalscorer", 0.07),
+            ("målscorer", 0.07),
+            ("corner", 0.05),
+            ("hjørne", 0.05),
+            ("card", 0.05),
+            ("kort", 0.05),
+        ] {
+            if context.contains(needle) {
+                flags.push(format!("market risk: {needle}"));
+                confidence -= penalty;
+            }
+        }
+
         if probability.estimated_probability < probability.implied_probability {
             flags.push("negative probability edge".to_string());
             confidence -= 0.08;
@@ -146,5 +161,26 @@ mod tests {
         assert!(risk.confidence < 0.65);
         assert!(risk.flags.iter().any(|flag| flag.contains("eurovision")));
         assert!(risk.flags.iter().any(|flag| flag.contains("topp 10")));
+    }
+
+    #[test]
+    fn penalizes_player_and_corner_markets() {
+        let candidate = candidate(
+            "Football",
+            "Eliteserien",
+            "Corners over/under",
+            "expanded corners market",
+        );
+        let probability = ProbabilityAssessment {
+            estimated_probability: candidate.implied_probability(),
+            implied_probability: candidate.implied_probability(),
+            sources: vec!["norsk_tipping_market_implied".to_string()],
+            notes: Vec::new(),
+        };
+
+        let risk = RiskAgent.assess(&candidate, &probability);
+
+        assert!(risk.confidence < 0.80);
+        assert!(risk.flags.iter().any(|flag| flag.contains("corner")));
     }
 }

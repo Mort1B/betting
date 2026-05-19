@@ -10,9 +10,10 @@ pub fn render_recommendation(
     output.push_str("Daily betting agent recommendation\n");
     output.push_str("==================================\n\n");
     output.push_str(&format!(
-        "Rules: Norsk Tipping odds {:.2}-{:.2}, min probability {:.2}%, min confidence {:.2}%, min edge {:.2} pp when model/reference data exists\n",
+        "Rules: Norsk Tipping preferred odds {:.2}-{:.2}, hard research ceiling {:.2}, min probability {:.2}%, min confidence {:.2}%, min edge {:.2} pp when model/reference data exists\n",
         rules.min_odds,
         rules.max_odds,
+        rules.max_research_odds,
         rules.min_estimated_probability * 100.0,
         rules.min_confidence * 100.0,
         rules.min_edge * 100.0

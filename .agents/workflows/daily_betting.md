@@ -26,7 +26,11 @@ comparison signals.
    - Produces positive, warning, and price-hint signals.
 
 4. `Deterministic Rust Agents`
-   - Filter by date and odds band.
+   - Filter by date and the hard research odds band.
+   - Keep `1.10-1.30` as the preferred odds band and `1.30-1.35` as fallback
+     slack only.
+   - Allow multiple ranked markets from the same match when fewer than 5
+     separate football matches are available.
    - Estimate probability from market-implied odds, model probability, and/or
      reference odds.
    - Calculate edge and expected value only when independent inputs exist.
@@ -65,7 +69,9 @@ comparison signals.
 
 ## Hard Gates
 
-- Norsk Tipping odds must be inside the configured band, default `1.15-1.30`.
+- Norsk Tipping odds must be at least `1.10` and at most `1.35` before any
+  candidate-specific ranking or research assessment.
+- The preferred strict band is `1.10-1.30`; `1.30-1.35` can only be fallback.
 - Estimated probability must clear the configured minimum.
 - Edge must clear the configured minimum only when independent model/reference
   data exists.

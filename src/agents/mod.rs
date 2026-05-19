@@ -62,7 +62,13 @@ impl DailyBetOrchestrator {
             candidates
         } else {
             date_screened
-        };
+        }
+        .into_iter()
+        .filter(|candidate| {
+            self.rules
+                .is_inside_research_odds_band(candidate.norsk_tipping_odds)
+        })
+        .collect::<Vec<_>>();
         let mut evaluated = Vec::new();
 
         for candidate in candidates {
@@ -180,7 +186,7 @@ mod tests {
         let recommendation = DailyBetOrchestrator::new(rules).recommend(
             vec![
                 candidate("weak", 1.22, Some(0.805), Some(0.72)),
-                candidate("best", 1.27, Some(0.835), Some(0.78)),
+                candidate("best", 1.27, Some(0.885), Some(0.80)),
                 candidate("solid", 1.18, Some(0.870), Some(0.74)),
                 candidate("third", 1.20, Some(0.860), Some(0.72)),
                 candidate("fourth", 1.19, Some(0.860), Some(0.72)),
@@ -266,6 +272,37 @@ mod tests {
             RecommendationDecision::Bet { .. } => panic!("date fallback should not be strict bet"),
             RecommendationDecision::NoBet { reason, .. } => {
                 panic!("expected top 5 fallback candidates, got no bet: {reason}")
+            }
+        }
+    }
+
+    #[test]
+    fn keeps_slack_odds_as_fallback_and_excludes_hard_ceiling() {
+        let recommendation = DailyBetOrchestrator::new(BettingRules::default()).recommend(
+            vec![
+                candidate("strict", 1.22, Some(0.850), Some(0.78)),
+                candidate("slack", 1.34, Some(0.850), Some(0.78)),
+                candidate("too-high", 1.36, Some(0.900), Some(0.90)),
+            ],
+            None,
+        );
+
+        match recommendation {
+            RecommendationDecision::BestAvailable { picks, .. } => {
+                assert_eq!(picks.len(), 2);
+                assert!(picks.iter().any(|pick| pick.candidate.id == "strict"));
+                assert!(picks.iter().any(|pick| {
+                    pick.candidate.id == "slack"
+                        && pick
+                            .rejection_reasons
+                            .iter()
+                            .any(|reason| reason.contains("slack fallback only"))
+                }));
+                assert!(!picks.iter().any(|pick| pick.candidate.id == "too-high"));
+            }
+            RecommendationDecision::Bet { .. } => panic!("slack candidate should force fallback"),
+            RecommendationDecision::NoBet { reason, .. } => {
+                panic!("expected ranked candidates, got no bet: {reason}")
             }
         }
     }

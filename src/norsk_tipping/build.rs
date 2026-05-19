@@ -37,11 +37,11 @@ pub(crate) fn candidates_from_events(
             .clone()
             .unwrap_or_else(|| sport_fallback.clone());
 
-        for market in event
-            .markets
-            .iter()
-            .filter(|market| market.is_candidate_market())
-        {
+        for (market, market_kind) in event.markets.iter().filter_map(|market| {
+            market
+                .candidate_market_kind()
+                .map(|market_kind| (market, market_kind))
+        }) {
             let market_name = market.display_name();
             let market_id = market.identifier();
 
@@ -52,7 +52,7 @@ pub(crate) fn candidates_from_events(
                 let Some(decimal_odds) = selection.decimal_odds() else {
                     continue;
                 };
-                if decimal_odds < rules.min_odds || decimal_odds > rules.max_odds {
+                if !rules.is_inside_research_odds_band(decimal_odds) {
                     continue;
                 }
 
@@ -80,7 +80,8 @@ pub(crate) fn candidates_from_events(
                     confidence: Some(live_confidence(decimal_odds)),
                     starts_at: starts_at.to_string(),
                     notes: format!(
-                        "live Norsk Tipping import; probability starts from market-implied price and context checks; event_id={event_id}; market={market_name}; selection_id={selection_id}"
+                        "live Norsk Tipping import; {}; probability starts from market-implied price and context checks; event_id={event_id}; market={market_name}; selection_id={selection_id}",
+                        market_kind.note()
                     ),
                 });
             }
@@ -215,5 +216,53 @@ mod tests {
         );
 
         assert!(candidates.is_empty());
+    }
+
+    #[test]
+    fn builds_expanded_markets_inside_research_band() {
+        let response: ContentResponse<Event> = serde_json::from_str(
+            r#"{
+              "data": [{
+                "idfoevent": "event-1",
+                "name": "Home - Away",
+                "sporttypename": "Fotball",
+                "tournamentname": "Cup",
+                "tsstart": "2026-05-16T18:00:00.000+02:00",
+                "markets": [{
+                  "idfomarket": "corners",
+                  "name": "Corners over/under",
+                  "isheadmarket": false,
+                  "ismainline": false,
+                  "istradable": true,
+                  "selections": [{
+                    "idfoselection": "s1",
+                    "name": "Over 7.5",
+                    "currentpriceup": "7",
+                    "currentpricedown": "20",
+                    "idfobolifestate": "N"
+                  }, {
+                    "idfoselection": "s2",
+                    "name": "Over 9.5",
+                    "currentpriceup": "2",
+                    "currentpricedown": "5",
+                    "idfobolifestate": "N"
+                  }]
+                }]
+              }]
+            }"#,
+        )
+        .expect("valid fixture");
+
+        let candidates = candidates_from_events(
+            response.data,
+            &BettingRules::default(),
+            "Fotball".to_string(),
+            None,
+        );
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].market, "Corners over/under");
+        assert_eq!(candidates[0].norsk_tipping_odds, 1.35);
+        assert!(candidates[0].notes.contains("expanded corners market"));
     }
 }

@@ -2,4 +2,4 @@ id,sport,competition,event,market,selection,norsk_tipping_odds,model_probability
 ex-001,Football,Eliteserien,Rosenborg - Brann,Double chance,Rosenborg or draw,1.27,0.835,1.20,0.78,2026-05-15T18:00:00+02:00,lineups stable; home travel edge
 ex-002,Football,Eliteserien,Viking - Molde,Over/under,Over 1.5 goals,1.22,0.845,,0.73,2026-05-15T19:00:00+02:00,tempo and team news checked
 ex-003,Tennis,ATP Geneva,Player A - Player B,Match winner,Player A,1.18,0.880,1.14,0.72,2026-05-15T15:30:00+02:00,serve hold edge and fitness checked
-ex-004,Football,Premier League,Arsenal - Everton,Match winner,Arsenal,1.34,0.840,1.29,0.76,2026-05-15T21:00:00+02:00,outside requested odds band
+ex-004,Football,Premier League,Arsenal - Everton,Match winner,Arsenal,1.34,0.840,1.29,0.76,2026-05-15T21:00:00+02:00,inside slack band above preferred odds ceiling

@@ -4,6 +4,7 @@ pub struct BettingRules {
     pub sport_scope: SportScope,
     pub min_odds: f64,
     pub max_odds: f64,
+    pub max_research_odds: f64,
     pub min_estimated_probability: f64,
     pub min_confidence: f64,
     pub min_edge: f64,
@@ -16,8 +17,9 @@ impl Default for BettingRules {
         Self {
             date: None,
             sport_scope: SportScope::Football,
-            min_odds: 1.15,
+            min_odds: 1.10,
             max_odds: 1.30,
+            max_research_odds: 1.35,
             min_estimated_probability: 0.79,
             min_confidence: 0.65,
             min_edge: 0.015,
@@ -35,12 +37,29 @@ impl BettingRules {
         if self.max_odds < self.min_odds {
             return Err("--max-odds must be greater than or equal to --min-odds".to_string());
         }
+        if self.max_research_odds < self.max_odds {
+            return Err(
+                "max research odds must be greater than or equal to --max-odds".to_string(),
+            );
+        }
         validate_unit_interval(self.min_estimated_probability, "--min-probability")?;
         validate_unit_interval(self.min_confidence, "--min-confidence")?;
         if self.pick_count == 0 {
             return Err("--pick-count must be greater than 0".to_string());
         }
         Ok(())
+    }
+
+    pub fn is_inside_preferred_odds_band(&self, odds: f64) -> bool {
+        odds >= self.min_odds && odds <= self.max_odds
+    }
+
+    pub fn is_inside_research_odds_band(&self, odds: f64) -> bool {
+        odds >= self.min_odds && odds <= self.max_research_odds
+    }
+
+    pub fn is_inside_slack_odds_band(&self, odds: f64) -> bool {
+        odds > self.max_odds && odds <= self.max_research_odds
     }
 
     pub fn filter_by_sport_scope(

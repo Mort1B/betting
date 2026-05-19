@@ -171,7 +171,7 @@ const REVIEWER_INSTRUCTIONS: &str = r#"You are the Reviewer agent.
 Challenge the Explorer and deterministic ranking. Look for overclaiming, weak football context evidence, stale or missing research, unresolved team news, underestimated form/injury/motivation/schedule risk, and cases where a bet is likely but not supported enough.
 Check that the learning note is not overstated: insufficient history or no settled data must not become a confidence claim.
 Return concise bullets with approve/question/reject style judgments for each top candidate.
-Do not invent facts, do not add unsupplied football context, and do not recommend bets outside the supplied Norsk Tipping odds band."#;
+Do not invent facts, do not add unsupplied football context, do not treat slack odds as strict picks, and do not recommend bets outside the supplied Norsk Tipping research band."#;
 
 const RISK_MANAGER_INSTRUCTIONS: &str = r#"You are the Risk Manager agent.
 Identify downside risks, confidence concerns, missing data, and no-bet triggers. Treat gambling outcomes as uncertain and never imply a guaranteed win.

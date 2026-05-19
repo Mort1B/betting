@@ -8,7 +8,8 @@ File: `src/agents/filter.rs`
 
 - Filters candidates by date.
 - Keeps football/soccer candidates by default.
-- Enforces the configured Norsk Tipping odds band.
+- Enforces the hard Norsk Tipping research band and marks `1.30-1.35` as
+  fallback-only slack.
 
 ## ProbabilityModelAgent
 
@@ -42,6 +43,7 @@ File: `src/agents/risk.rs`
 
 - Applies confidence penalties.
 - Flags risk terms from sport, competition, event, market, selection, and notes.
+- Penalizes volatile expanded markets such as corners, cards, and goal scorers.
 - Integrates research warning signals.
 - Integrates football context warnings for form, injuries/suspensions,
   lineup/rotation, motivation, schedule/travel, weather/venue, and market
@@ -66,7 +68,9 @@ File: `src/agents/selector.rs`
 - Scores candidates.
 - Selects the top 5 candidates by default.
 - Fills with best available fallback candidates when fewer than 5 pass every
-  strict gate, preferring candidates inside the configured odds band.
+  strict gate, preferring candidates inside the preferred odds band.
+- Can rank multiple preferred bets from the same football match when the daily
+  board has fewer than 5 separate matches.
 - Returns `NO BET` only when there are no candidates to rank.
 
 ## Orchestrator

@@ -12,7 +12,9 @@ The runtime is a deterministic multi-agent pipeline coordinated by
   content endpoint.
 - Skips non-football sport boards by default through `BETTING_SPORT_SCOPE`.
 - Converts Norsk Tipping fractional price fields into decimal odds.
-- Emits candidates only inside the configured odds band, default `1.15-1.30`.
+- Emits candidates only inside the hard research band, default `1.10-1.35`.
+- Includes supported expanded football markets such as goals, corners, cards,
+  and player scorer markets.
 - Skips events earlier than the live-source cutoff passed by the publisher.
 - Leaves `model_probability` and `reference_odds` empty by default. The
   probability model can still rank these candidates from market-implied
@@ -42,8 +44,10 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 `OddsScreeningAgent`
 
 - Applies the daily date filter.
-- Enforces the requested Norsk Tipping odds band, default `1.15-1.30`, across
-  football/soccer candidates by default.
+- Enforces the requested Norsk Tipping preferred band, default `1.10-1.30`,
+  across football/soccer candidates by default.
+- Excludes candidates below `1.10` or above `1.35`; `1.30-1.35` is marked as
+  fallback-only slack.
 - Keeps rejected candidates visible in the final report so the decision is
   auditable.
 
@@ -69,8 +73,8 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Starts from the supplied `confidence` score.
 - Penalizes contextual risk terms across sport, competition, event, market,
   selection, and notes.
-- Penalizes entertainment/special markets, friendlies, injury/rotation/weather
-  risk, and research warnings.
+- Penalizes entertainment/special markets, volatile expanded markets, friendlies,
+  injury/rotation/weather risk, and research warnings.
 - Applies small confidence adjustments from matched research warnings or
   positive signals.
 - Produces explicit risk flags for the report.
@@ -113,6 +117,8 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Fills with best available fallback candidates when fewer than 5 pass every
   strict gate, preferring candidates inside the requested Norsk Tipping odds
   band before any outside-band fallback.
+- Allows several preferred markets from the same match when the football board
+  has fewer than 5 separate matches.
 - Returns `NO BET` only when there are no candidates to rank.
 
 `LearningAgent`
@@ -186,8 +192,8 @@ and context.
 
 ## Daily Workflow
 
-1. Collect current Norsk Tipping football/soccer candidates in the `1.15-1.30`
-   band from live Oddsen data.
+1. Collect current Norsk Tipping football/soccer candidates in the `1.10-1.35`
+   research band from live Oddsen data, with `1.10-1.30` preferred.
 2. Score candidates from market-implied probability, context confidence,
    research signals, and optional model/reference data.
 3. Add risk notes after checking injury, lineup, motivation, market type, and

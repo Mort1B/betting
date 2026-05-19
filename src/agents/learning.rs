@@ -208,10 +208,12 @@ fn market_type(market: &str, selection: &str) -> String {
 
 fn odds_bucket(odds: f64) -> String {
     match odds {
-        value if value < 1.15 => "below_band",
+        value if value < 1.10 => "below_band",
+        value if value < 1.15 => "1.10-1.14",
         value if value < 1.20 => "1.15-1.19",
         value if value < 1.25 => "1.20-1.24",
         value if value <= 1.30 => "1.25-1.30",
+        value if value <= 1.35 => "1.31-1.35_slack",
         _ => "above_band",
     }
     .to_string()

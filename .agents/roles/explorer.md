@@ -40,4 +40,5 @@ Concise bullets per candidate:
 
 - Do not invent odds, injuries, sources, teams, or probabilities.
 - Do not infer form, motivation, or team news from generic football knowledge.
-- Do not recommend bets outside the configured Norsk Tipping odds band.
+- Do not recommend fallback slack bets as strict picks.
+- Do not recommend bets outside the supplied Norsk Tipping research band.

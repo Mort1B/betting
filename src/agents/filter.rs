@@ -27,10 +27,15 @@ impl OddsScreeningAgent {
                 candidate.norsk_tipping_odds, rules.min_odds
             ));
         }
-        if candidate.norsk_tipping_odds > rules.max_odds {
+        if rules.is_inside_slack_odds_band(candidate.norsk_tipping_odds) {
             rejections.push(format!(
-                "Norsk Tipping odds {:.2} are above the {:.2} ceiling",
+                "Norsk Tipping odds {:.2} are above preferred ceiling {:.2}; slack fallback only",
                 candidate.norsk_tipping_odds, rules.max_odds
+            ));
+        } else if candidate.norsk_tipping_odds > rules.max_research_odds {
+            rejections.push(format!(
+                "Norsk Tipping odds {:.2} are above research ceiling {:.2}",
+                candidate.norsk_tipping_odds, rules.max_research_odds
             ));
         }
         rejections

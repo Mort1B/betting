@@ -10,7 +10,8 @@ Target behavior:
 
 - only football/soccer candidates are considered,
 - Norsk Tipping remains the final bet price,
-- the default odds band remains `1.15-1.30` unless explicitly changed later,
+- the preferred odds band is `1.10-1.30`, with `1.30-1.35` as fallback-only
+  slack,
 - the report returns 5 ranked football picks when at least 5 rankable football
   candidates exist,
 - the report returns fewer than 5 only when fewer football candidates exist,
@@ -75,6 +76,29 @@ Acceptance criteria:
 - The selector returns 5 candidates when 5 or more candidates are rankable.
 - Fallback copy says `top 5`, not `top 3`.
 - AI output writer instructions require 5 candidates when available.
+
+### 2a. Expanded Football Markets And Slack Odds
+
+Status: implemented.
+
+Support daily top-5 output even when fewer than 5 separate football matches are
+played.
+
+- Keep football/soccer as the only scheduled sport scope.
+- Keep `1.10-1.30` as the preferred odds band.
+- Exclude prices below `1.10` or above `1.35` before ranking.
+- Allow `1.30-1.35` only as fallback slack.
+- Add supported expanded market extraction for goals, corners, cards, both
+  teams to score, and player scorer markets.
+- Let multiple markets from the same match appear when the match board is thin.
+- Apply extra risk penalties to volatile expanded markets.
+
+Acceptance criteria:
+
+- Live Norsk Tipping import can build supported expanded football market
+  candidates.
+- Candidates outside `1.10-1.35` are skipped before candidate-specific ranking.
+- Slack candidates are visible as fallback-only and do not pass strict gates.
 
 ### 3. Football Context Research
 
@@ -305,7 +329,7 @@ scripts/publish_static_report.sh
 
 ## Non-Goals For The First Implementation
 
-- Do not widen the odds band unless explicitly requested.
+- Do not widen the hard `1.35` research ceiling unless explicitly requested.
 - Do not use another bookmaker as the final bet price.
 - Do not create guaranteed-bet language.
 - Do not invent injuries, motivation, team news, outcomes, or sources.

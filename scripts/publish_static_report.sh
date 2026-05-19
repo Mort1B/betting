@@ -14,8 +14,11 @@ OPENAI_MODEL="${BETTING_OPENAI_MODEL:-gpt-5.5}"
 CANDIDATE_SOURCE="${BETTING_CANDIDATE_SOURCE:-norsk-tipping-live}"
 SPORT_SCOPE="${BETTING_SPORT_SCOPE:-football}"
 PICK_COUNT="${BETTING_PICK_COUNT:-5}"
+MIN_ODDS="${BETTING_MIN_ODDS:-1.10}"
+MAX_ODDS="${BETTING_MAX_ODDS:-1.30}"
 NT_EVENTS_PER_SPORT="${BETTING_NT_EVENTS_PER_SPORT:-35}"
 NT_EARLIEST_START="${BETTING_NT_EARLIEST_START:-$(TZ=Europe/Oslo date +%Y-%m-%dT%H:%M)}"
+DELIVERY="${BETTING_DELIVERY:-none}"
 
 if [[ -z "$REPORT_TOKEN" ]]; then
   echo "BETTING_REPORT_TOKEN or REPORT_TOKEN is required" >&2
@@ -36,6 +39,19 @@ AI_ARGS=()
 if [[ "$ENABLE_AI" == "true" || "$ENABLE_AI" == "1" ]]; then
   AI_ARGS=(--ai --openai-model "$OPENAI_MODEL")
 fi
+
+case "$DELIVERY" in
+  pushover)
+    DELIVERY_ARGS=(--send-pushover)
+    ;;
+  none)
+    DELIVERY_ARGS=()
+    ;;
+  *)
+    echo "BETTING_DELIVERY must be pushover or none for static publishing" >&2
+    exit 2
+    ;;
+esac
 
 REFERENCE_ARGS=()
 if [[ -n "$REFERENCE_ODDS_CSV" ]]; then
@@ -74,9 +90,12 @@ BETTING_HISTORY_INPUT="$HISTORY_INPUT" BETTING_HISTORY_OUTPUT="$HISTORY_REPORT" 
   --date "$TODAY" \
   --sport-scope "$SPORT_SCOPE" \
   --pick-count "$PICK_COUNT" \
+  --min-odds "$MIN_ODDS" \
+  --max-odds "$MAX_ODDS" \
   --research "$RESEARCH_SOURCES" \
   "${REFERENCE_ARGS[@]}" \
   "${AI_ARGS[@]}" \
+  "${DELIVERY_ARGS[@]}" \
   > "$TODAY_REPORT"
 
 cp "$TODAY_REPORT" "$DATED_REPORT"

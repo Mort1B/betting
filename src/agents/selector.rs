@@ -180,11 +180,11 @@ impl DailySelectionAgent {
 }
 
 fn is_inside_requested_odds_band(odds: f64, rules: &BettingRules) -> bool {
-    odds >= rules.min_odds && odds <= rules.max_odds
+    rules.is_inside_preferred_odds_band(odds)
 }
 
 fn odds_band_fit(odds: f64) -> f64 {
-    let midpoint = (1.15 + 1.30) / 2.0;
+    let midpoint = (1.10 + 1.30) / 2.0;
     let distance = (odds - midpoint).abs();
-    (1.0 - (distance / 0.075)).clamp(0.0, 1.0)
+    (1.0 - (distance / 0.10)).clamp(0.0, 1.0)
 }
