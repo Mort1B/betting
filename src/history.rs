@@ -1,5 +1,4 @@
 use std::fs;
-use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
@@ -70,20 +69,12 @@ pub(crate) struct HistoryKey {
     pub(crate) starts_at: String,
 }
 
-pub fn write_history_file(
+pub(crate) fn merge_recommendation_entries(
+    entries: &mut Vec<PickHistoryEntry>,
     recommendation: &RecommendationDecision,
     rules: &BettingRules,
-    input_path: Option<&str>,
-    output_path: &str,
-) -> Result<(), String> {
-    let mut entries = match input_path {
-        Some(path) if Path::new(path).exists() => read_history_file(path)?,
-        _ => Vec::new(),
-    };
-    let new_entries = current_entries(recommendation, rules);
-
-    merge_entries(&mut entries, new_entries);
-    write_entries(output_path, &entries)
+) {
+    merge_entries(entries, current_entries(recommendation, rules));
 }
 
 fn current_entries(

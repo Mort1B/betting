@@ -126,9 +126,7 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 
 `LearningAgent`
 
-- Reads settled previous pick history from `BETTING_HISTORY_INPUT` when present.
-- Applies `BETTING_SETTLEMENTS_JSONL` in memory before learning so same-run
-  checked result updates can influence today's ranking.
+- Receives settled previous pick history from the run-level history state.
 - Ignores pending, void, and unknown results.
 - Builds deterministic football buckets from competition, market type, odds
   range, selection type, and football context warning categories.
@@ -137,12 +135,19 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Caps history confidence movement at +/-3 percentage points and emits a visible
   learning note for every pick.
 
+`HistoryState`
+
+- Reads optional previous history from `BETTING_HISTORY_INPUT` once per run.
+- Parses optional `BETTING_SETTLEMENTS_JSONL` records once per run.
+- Applies settlements in memory before learning and again after merging current
+  picks, preserving same-run settlement behavior without rereading files.
+- Builds the `LearningAgent` from the in-memory entries.
+
 `PickHistory`
 
 - Runs after deterministic selection and before optional OpenAI rewriting.
 - Writes JSON Lines entries for the current ranked picks when
   `BETTING_HISTORY_OUTPUT` is set.
-- Reads an optional previous history file from `BETTING_HISTORY_INPUT`.
 - Merges reruns by report date, event, market, selection, and start time so the
   same pick is not duplicated.
 - Preserves settled `win`, `loss`, or `void` statuses when the same pick is

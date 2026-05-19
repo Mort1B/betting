@@ -5,6 +5,11 @@ use serde::Deserialize;
 use crate::domain::SportScope;
 use crate::history::{HistoryKey, PickHistoryEntry, ResultStatus};
 
+#[derive(Debug, Clone)]
+pub(crate) struct SettlementRecords {
+    records: Vec<SettlementRecord>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct SettlementRecord {
     report_date: String,
@@ -21,24 +26,16 @@ struct SettlementRecord {
     settled_at: String,
 }
 
-pub fn settle_history_file(history_path: &str, settlements_path: &str) -> Result<usize, String> {
-    let mut entries = crate::history::read_history_file(history_path)?;
-    let updated = apply_settlement_file(&mut entries, settlements_path)?;
-    crate::history::write_entries(history_path, &entries)?;
-    Ok(updated)
-}
+impl SettlementRecords {
+    pub(crate) fn read(path: &str) -> Result<Self, String> {
+        let content = fs::read_to_string(path).map_err(|error| format!("{path}: {error}"))?;
+        let records = parse_settlements(&content).map_err(|error| format!("{path}: {error}"))?;
+        Ok(Self { records })
+    }
 
-pub(crate) fn apply_settlement_file(
-    entries: &mut [PickHistoryEntry],
-    settlements_path: &str,
-) -> Result<usize, String> {
-    let settlements = read_settlement_file(settlements_path)?;
-    Ok(apply_settlements(entries, &settlements))
-}
-
-fn read_settlement_file(path: &str) -> Result<Vec<SettlementRecord>, String> {
-    let content = fs::read_to_string(path).map_err(|error| format!("{path}: {error}"))?;
-    parse_settlements(&content).map_err(|error| format!("{path}: {error}"))
+    pub(crate) fn apply_to(&self, entries: &mut [PickHistoryEntry]) -> usize {
+        apply_settlements(entries, &self.records)
+    }
 }
 
 fn parse_settlements(content: &str) -> Result<Vec<SettlementRecord>, String> {

@@ -126,7 +126,7 @@ Validation:
   precomputation.
 
 ### 5. Consolidate History And Settlement State
-
+Status: completed on 2026-05-19. Run-level `HistoryState` now loads history and settlements once, feeds learning, and writes merged output in memory.
 Files:
 - `src/history_pipeline.rs`
 - `src/history.rs`

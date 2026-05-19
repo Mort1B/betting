@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use std::env;
-use std::path::Path;
 
 use crate::domain::{
     BetCandidate, FootballContextAssessment, FootballContextStatus, LearningAssessment,
@@ -18,29 +16,7 @@ pub struct LearningAgent {
 }
 
 impl LearningAgent {
-    pub fn disabled() -> Self {
-        Self {
-            bucket_counts: HashMap::new(),
-            min_bucket_sample: MIN_BUCKET_SAMPLE,
-        }
-    }
-
-    pub fn from_env() -> Result<Self, String> {
-        let Ok(path) = env::var("BETTING_HISTORY_INPUT") else {
-            return Ok(Self::disabled());
-        };
-        if path.trim().is_empty() || !Path::new(&path).exists() {
-            return Ok(Self::disabled());
-        }
-
-        let mut entries = crate::history::read_history_file(&path)?;
-        if let Ok(settlements_path) = env::var("BETTING_SETTLEMENTS_JSONL") {
-            crate::settlement::apply_settlement_file(&mut entries, &settlements_path)?;
-        }
-        Ok(Self::from_entries(entries))
-    }
-
-    fn from_entries(entries: Vec<PickHistoryEntry>) -> Self {
+    pub(crate) fn from_entries(entries: Vec<PickHistoryEntry>) -> Self {
         Self {
             bucket_counts: build_bucket_counts(&entries),
             min_bucket_sample: MIN_BUCKET_SAMPLE,
@@ -279,7 +255,8 @@ mod tests {
 
     #[test]
     fn returns_no_history_note_without_settled_entries() {
-        let learning = LearningAgent::disabled().assess(&candidate(), &context(Vec::new()));
+        let learning =
+            LearningAgent::from_entries(Vec::new()).assess(&candidate(), &context(Vec::new()));
 
         assert_eq!(learning.confidence_adjustment, 0.0);
         assert!(learning.notes[0].contains("no settled"));

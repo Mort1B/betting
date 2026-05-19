@@ -10,7 +10,7 @@ use crate::football_context::assess_football_context;
 use crate::research::{ResearchDigest, assess_candidate_research};
 
 use filter::OddsScreeningAgent;
-use learning::LearningAgent;
+pub(crate) use learning::LearningAgent;
 use probability::ProbabilityModelAgent;
 use risk::RiskAgent;
 use selector::DailySelectionAgent;
@@ -30,14 +30,10 @@ pub struct DailyBetOrchestrator {
 impl DailyBetOrchestrator {
     #[cfg(test)]
     pub fn new(rules: BettingRules) -> Self {
-        Self::with_learning_agent(rules, LearningAgent::disabled())
+        Self::with_learning_agent(rules, LearningAgent::from_entries(Vec::new()))
     }
 
-    pub fn from_env(rules: BettingRules) -> Result<Self, String> {
-        Ok(Self::with_learning_agent(rules, LearningAgent::from_env()?))
-    }
-
-    fn with_learning_agent(rules: BettingRules, learning_agent: LearningAgent) -> Self {
+    pub(crate) fn with_learning_agent(rules: BettingRules, learning_agent: LearningAgent) -> Self {
         Self {
             rules,
             odds_screening_agent: OddsScreeningAgent,

@@ -76,19 +76,23 @@ fn main() {
     };
     timings.mark("research_fetch");
 
-    let orchestrator = match DailyBetOrchestrator::from_env(options.rules.clone()) {
-        Ok(orchestrator) => orchestrator,
+    let mut history_state = match history_pipeline::HistoryState::from_env() {
+        Ok(history_state) => history_state,
         Err(error) => {
             eprintln!("failed to load learning history: {error}");
             process::exit(1);
         }
     };
+    let orchestrator = DailyBetOrchestrator::with_learning_agent(
+        options.rules.clone(),
+        history_state.learning_agent(),
+    );
     timings.mark("learning_history_load");
 
     let recommendation = orchestrator.recommend(candidates, research_digest.as_ref());
     timings.mark("deterministic_scoring");
 
-    if let Err(error) = history_pipeline::write_history_from_env(&recommendation, &options.rules) {
+    if let Err(error) = history_state.write_recommendation(&recommendation, &options.rules) {
         eprintln!("failed to write pick history: {error}");
         process::exit(1);
     }
