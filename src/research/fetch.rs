@@ -1,10 +1,13 @@
 use reqwest::blocking::Client;
 use scraper::{Html, Selector};
 use serde::Deserialize;
+use std::thread;
 use std::time::Duration;
 
 use super::analyze::{ResearchDigest, ResearchPage, analyze_text};
 use super::source::{ResearchOptions, ResearchSource, ResearchSourceKind};
+
+const MAX_PARALLEL_FETCHES: usize = 4;
 
 #[derive(Debug, Clone)]
 pub struct MarketResearchClient {
@@ -23,23 +26,51 @@ impl MarketResearchClient {
     }
 
     pub fn fetch(&self, sources: &[ResearchSource], options: &ResearchOptions) -> ResearchDigest {
-        let mut pages = Vec::new();
+        let selected = sources
+            .iter()
+            .take(options.max_pages)
+            .cloned()
+            .collect::<Vec<_>>();
+        let mut indexed_pages = Vec::new();
 
-        for source in sources.iter().take(options.max_pages) {
-            match self.fetch_source(source, options.max_items_per_source) {
-                Ok(mut source_pages) => pages.append(&mut source_pages),
-                Err(error) => pages.push(ResearchPage {
-                    source_name: source.name.clone(),
-                    url: source.url.clone(),
-                    title: source.name.clone(),
-                    text: String::new(),
-                    signals: Vec::new(),
-                    error: Some(error),
-                }),
-            }
+        for (batch_index, batch) in selected.chunks(MAX_PARALLEL_FETCHES).enumerate() {
+            let batch_start = batch_index * MAX_PARALLEL_FETCHES;
+            thread::scope(|scope| {
+                let handles = batch
+                    .iter()
+                    .enumerate()
+                    .map(|(offset, source)| {
+                        let client = self.clone();
+                        let source = source.clone();
+                        scope.spawn(move || {
+                            (
+                                batch_start + offset,
+                                client.fetch_source_or_error(&source, options.max_items_per_source),
+                            )
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
+                for handle in handles {
+                    indexed_pages.push(handle.join().expect("research fetch worker panicked"));
+                }
+            });
         }
 
-        ResearchDigest { pages }
+        ResearchDigest {
+            pages: flatten_ordered_pages(indexed_pages),
+        }
+    }
+
+    fn fetch_source_or_error(
+        &self,
+        source: &ResearchSource,
+        max_items: usize,
+    ) -> Vec<ResearchPage> {
+        match self.fetch_source(source, max_items) {
+            Ok(source_pages) => source_pages,
+            Err(error) => vec![source_error_page(source, error)],
+        }
     }
 
     fn fetch_source(
@@ -65,6 +96,25 @@ impl MarketResearchClient {
             ResearchSourceKind::Html => Ok(vec![html_page(source, &body)]),
             ResearchSourceKind::RedditJson => reddit_pages(source, &body, max_items),
         }
+    }
+}
+
+fn flatten_ordered_pages(mut indexed_pages: Vec<(usize, Vec<ResearchPage>)>) -> Vec<ResearchPage> {
+    indexed_pages.sort_by_key(|(index, _)| *index);
+    indexed_pages
+        .into_iter()
+        .flat_map(|(_, pages)| pages)
+        .collect()
+}
+
+fn source_error_page(source: &ResearchSource, error: String) -> ResearchPage {
+    ResearchPage {
+        source_name: source.name.clone(),
+        url: source.url.clone(),
+        title: source.name.clone(),
+        text: String::new(),
+        signals: Vec::new(),
+        error: Some(error),
     }
 }
 
@@ -157,4 +207,136 @@ struct RedditPost {
     selftext: Option<String>,
     permalink: Option<String>,
     url: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    #[test]
+    fn flattens_parallel_results_by_source_order() {
+        let pages = flatten_ordered_pages(vec![
+            (1, vec![page("second-a"), page("second-b")]),
+            (0, vec![page("first")]),
+            (2, vec![page("third")]),
+        ]);
+
+        let titles = pages.into_iter().map(|page| page.title).collect::<Vec<_>>();
+        assert_eq!(titles, vec!["first", "second-a", "second-b", "third"]);
+    }
+
+    #[test]
+    fn source_error_page_preserves_source_identity() {
+        let source = ResearchSource {
+            name: "blocked".to_string(),
+            kind: ResearchSourceKind::Html,
+            url: "https://example.test".to_string(),
+        };
+
+        let page = source_error_page(&source, "returned 403".to_string());
+
+        assert_eq!(page.source_name, "blocked");
+        assert_eq!(page.url, "https://example.test");
+        assert_eq!(page.error.as_deref(), Some("returned 403"));
+    }
+
+    #[test]
+    fn fetches_parallel_sources_with_stable_order_and_errors() {
+        let slow = MockServer::spawn(
+            "200 OK",
+            "<html><head><title>Slow Source</title></head><body>slow value</body></html>",
+            Duration::from_millis(100),
+        );
+        let fast = MockServer::spawn(
+            "200 OK",
+            "<html><head><title>Fast Source</title></head><body>fast value</body></html>",
+            Duration::ZERO,
+        );
+        let failed = MockServer::spawn(
+            "500 Internal Server Error",
+            "failed",
+            Duration::from_millis(10),
+        );
+        let sources = vec![
+            source("slow", &slow.url),
+            source("fast", &fast.url),
+            source("failed", &failed.url),
+        ];
+        let options = ResearchOptions {
+            source_path: None,
+            max_pages: 10,
+            max_items_per_source: 10,
+        };
+
+        let digest = MarketResearchClient::new()
+            .expect("client")
+            .fetch(&sources, &options);
+
+        slow.join();
+        fast.join();
+        failed.join();
+        assert_eq!(digest.pages.len(), 3);
+        assert_eq!(digest.pages[0].source_name, "slow");
+        assert_eq!(digest.pages[0].title, "Slow Source");
+        assert_eq!(digest.pages[1].source_name, "fast");
+        assert_eq!(digest.pages[1].title, "Fast Source");
+        assert_eq!(digest.pages[2].source_name, "failed");
+        assert!(
+            digest.pages[2]
+                .error
+                .as_deref()
+                .is_some_and(|error| error.contains("500"))
+        );
+    }
+
+    fn page(title: &str) -> ResearchPage {
+        ResearchPage {
+            source_name: title.to_string(),
+            url: format!("https://example.test/{title}"),
+            title: title.to_string(),
+            text: String::new(),
+            signals: Vec::new(),
+            error: None,
+        }
+    }
+
+    fn source(name: &str, url: &str) -> ResearchSource {
+        ResearchSource {
+            name: name.to_string(),
+            kind: ResearchSourceKind::Html,
+            url: url.to_string(),
+        }
+    }
+
+    struct MockServer {
+        url: String,
+        handle: thread::JoinHandle<()>,
+    }
+
+    impl MockServer {
+        fn spawn(status: &'static str, body: &'static str, delay: Duration) -> Self {
+            let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock server");
+            let url = format!("http://{}", listener.local_addr().expect("mock addr"));
+            let handle = thread::spawn(move || {
+                let (mut stream, _) = listener.accept().expect("accept request");
+                let mut buffer = [0_u8; 1024];
+                let _ = stream.read(&mut buffer);
+                thread::sleep(delay);
+                write!(
+                    stream,
+                    "HTTP/1.1 {status}\r\ncontent-length: {}\r\ncontent-type: text/html\r\nconnection: close\r\n\r\n{body}",
+                    body.len()
+                )
+                .expect("write response");
+            });
+
+            Self { url, handle }
+        }
+
+        fn join(self) {
+            self.handle.join().expect("mock server finished");
+        }
+    }
 }

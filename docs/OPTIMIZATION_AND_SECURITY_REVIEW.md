@@ -58,6 +58,9 @@ Validation:
 
 ### 2. Parallelize Bounded Research Fetching
 
+Status: completed on 2026-05-19. Research sources are fetched in deterministic
+batches of four.
+
 Files:
 - `src/research/fetch.rs`
 - `src/research/source.rs`
