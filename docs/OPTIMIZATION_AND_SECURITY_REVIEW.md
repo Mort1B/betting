@@ -147,7 +147,7 @@ Validation:
 - Static publisher smoke with `BETTING_SETTLEMENTS_JSONL`.
 
 ### 6. Reduce AI Token And Round-Trip Cost
-
+Status: completed on 2026-05-19. AI review now uses compact role inputs and a mockable client boundary while preserving four calls.
 Files:
 - `src/ai/mod.rs`
 - `.github/workflows/daily-report.yml`

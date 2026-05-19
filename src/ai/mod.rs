@@ -1,8 +1,15 @@
+mod prompts;
+
 use std::env;
 use std::time::Duration;
 
 use reqwest::blocking::Client;
 use serde_json::{Value, json};
+
+use prompts::{
+    EXPLORER_INSTRUCTIONS, OUTPUT_WRITER_INSTRUCTIONS, REVIEWER_INSTRUCTIONS,
+    RISK_MANAGER_INSTRUCTIONS, agent_input, compact_deterministic_report,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AiOptions {
@@ -40,41 +47,61 @@ pub fn run_ai_workflow(
         return Ok(None);
     }
 
-    let client = OpenAiClient::new(options)?;
+    let mut client = OpenAiClient::new(options)?;
+    let report = run_ai_workflow_with_client(deterministic_report, &mut client)?;
+    Ok(Some(report))
+}
 
+fn run_ai_workflow_with_client(
+    deterministic_report: &str,
+    client: &mut impl AiAgentClient,
+) -> Result<AiWorkflowReport, String> {
+    let compact_report = compact_deterministic_report(deterministic_report);
     let explorer = client.call_agent(
         "Explorer",
         EXPLORER_INSTRUCTIONS,
-        &format!("Deterministic betting report:\n\n{deterministic_report}"),
+        &agent_input(&compact_report, &[]),
     )?;
     let reviewer = client.call_agent(
         "Reviewer",
         REVIEWER_INSTRUCTIONS,
-        &format!(
-            "Deterministic betting report:\n\n{deterministic_report}\n\nExplorer output:\n\n{explorer}"
-        ),
+        &agent_input(&compact_report, &[("Explorer output", &explorer)]),
     )?;
     let risk_manager = client.call_agent(
         "Risk manager",
         RISK_MANAGER_INSTRUCTIONS,
-        &format!(
-            "Deterministic betting report:\n\n{deterministic_report}\n\nExplorer output:\n\n{explorer}\n\nReviewer output:\n\n{reviewer}"
+        &agent_input(
+            &compact_report,
+            &[
+                ("Explorer output", &explorer),
+                ("Reviewer output", &reviewer),
+            ],
         ),
     )?;
     let final_output = client.call_agent(
         "Output writer",
         OUTPUT_WRITER_INSTRUCTIONS,
-        &format!(
-            "Deterministic betting report:\n\n{deterministic_report}\n\nExplorer output:\n\n{explorer}\n\nReviewer output:\n\n{reviewer}\n\nRisk manager output:\n\n{risk_manager}"
+        &agent_input(
+            &compact_report,
+            &[
+                ("Explorer output", &explorer),
+                ("Reviewer output", &reviewer),
+                ("Risk manager output", &risk_manager),
+            ],
         ),
     )?;
 
-    Ok(Some(AiWorkflowReport {
+    Ok(AiWorkflowReport {
         explorer,
         reviewer,
         risk_manager,
         final_output,
-    }))
+    })
+}
+
+trait AiAgentClient {
+    fn call_agent(&mut self, name: &str, instructions: &str, input: &str)
+    -> Result<String, String>;
 }
 
 #[derive(Debug, Clone)]
@@ -106,8 +133,15 @@ impl OpenAiClient {
             max_output_tokens: options.max_output_tokens,
         })
     }
+}
 
-    fn call_agent(&self, name: &str, instructions: &str, input: &str) -> Result<String, String> {
+impl AiAgentClient for OpenAiClient {
+    fn call_agent(
+        &mut self,
+        name: &str,
+        instructions: &str,
+        input: &str,
+    ) -> Result<String, String> {
         let payload = json!({
             "model": self.model,
             "instructions": instructions,
@@ -170,34 +204,10 @@ fn extract_output_text(value: &Value) -> Option<String> {
     }
 }
 
-const EXPLORER_INSTRUCTIONS: &str = r#"You are the Explorer agent for a daily betting workflow.
-Use the supplied deterministic report only. Identify the strongest probability, context, confidence, and research signals for the top candidates.
-For every candidate, summarize supplied evidence for form, injuries/suspensions, lineups/rotation, motivation, schedule/travel pressure, weather/venue, market context, the learning note, research matches, and optional model/reference evidence.
-Treat unknown football checklist items as missing evidence, not as positive or negative facts. Do not infer team news, motivation, injuries, odds, probabilities, sources, or results beyond the supplied report. Keep output concise."#;
-
-const REVIEWER_INSTRUCTIONS: &str = r#"You are the Reviewer agent.
-Challenge the Explorer and deterministic ranking. Look for overclaiming, weak football context evidence, stale or missing research, unresolved team news, underestimated form/injury/motivation/schedule risk, and cases where a bet is likely but not supported enough.
-Check that the learning note is not overstated: insufficient history or no settled data must not become a confidence claim.
-Return concise bullets with approve/question/reject style judgments for each top candidate.
-Do not invent facts, do not add unsupplied football context, do not treat slack odds as strict picks, and do not recommend bets outside the supplied Norsk Tipping research band."#;
-
-const RISK_MANAGER_INSTRUCTIONS: &str = r#"You are the Risk Manager agent.
-Identify downside risks, confidence concerns, missing data, and no-bet triggers. Treat gambling outcomes as uncertain and never imply a guaranteed win.
-Downgrade or question candidates when injuries, suspensions, lineup, rotation, motivation, schedule, weather, venue, market context, or learning support is unresolved, negative, or insufficient in the supplied report.
-Preserve deterministic fallback status and rejection reasons; do not turn a fallback candidate into a strict recommendation.
-Return concise risk notes for each top candidate and say whether any candidate should be downgraded.
-Use only supplied facts."#;
-
-const OUTPUT_WRITER_INSTRUCTIONS: &str = r#"You are the Output Writer agent.
-Write the final user-facing daily report using the deterministic report plus the Explorer, Reviewer, and Risk Manager outputs.
-The output must include the top 5 candidates when available, preserving deterministic rank order. For each candidate include: sport/competition, event, market, selection, Norsk Tipping odds, probability/confidence basis, football context checklist summary, learning note, reference-market comparison only when supplied, main risks, strict rules status, and confidence score out of 100.
-If the deterministic report says TOP 5 CANDIDATES, preserve those five ranked candidates and their fallback warnings instead of converting the report to NO BET.
-If the deterministic report says NO BET because no viable candidates were supplied, output NO BET and explain why.
-Keep unknown football context visible as unknown. Keep it practical, concise, and suitable for an iPhone notification/page. Do not invent facts."#;
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::VecDeque;
 
     #[test]
     fn extracts_top_level_output_text() {
@@ -222,17 +232,6 @@ mod tests {
     }
 
     #[test]
-    fn ai_role_prompts_preserve_context_and_learning_constraints() {
-        assert!(EXPLORER_INSTRUCTIONS.contains("learning note"));
-        assert!(EXPLORER_INSTRUCTIONS.contains("unknown football checklist"));
-        assert!(REVIEWER_INSTRUCTIONS.contains("insufficient history"));
-        assert!(RISK_MANAGER_INSTRUCTIONS.contains("fallback status"));
-        assert!(OUTPUT_WRITER_INSTRUCTIONS.contains("top 5 candidates"));
-        assert!(OUTPUT_WRITER_INSTRUCTIONS.contains("learning note"));
-        assert!(OUTPUT_WRITER_INSTRUCTIONS.contains("Do not invent facts"));
-    }
-
-    #[test]
     fn skips_ai_for_empty_no_bet_report() {
         let report = "Daily betting agent recommendation\n\nDecision: NO BET\n\nNo viable bets available; no candidates were available to rank.\n";
         let options = AiOptions {
@@ -242,4 +241,127 @@ mod tests {
 
         assert_eq!(run_ai_workflow(report, &options), Ok(None));
     }
+
+    #[test]
+    fn ai_workflow_keeps_four_roles_with_compact_inputs() {
+        let mut client = MockAiClient::new([
+            "explorer summary",
+            "reviewer challenge",
+            "risk notes",
+            "final report",
+        ]);
+
+        let report = run_ai_workflow_with_client(WORKFLOW_FIXTURE, &mut client)
+            .expect("mock workflow should succeed");
+
+        assert_eq!(report.explorer, "explorer summary");
+        assert_eq!(report.reviewer, "reviewer challenge");
+        assert_eq!(report.risk_manager, "risk notes");
+        assert_eq!(report.final_output, "final report");
+        assert_eq!(
+            client
+                .calls
+                .iter()
+                .map(|call| call.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Explorer", "Reviewer", "Risk manager", "Output writer"]
+        );
+
+        let explorer = &client.calls[0].input;
+        assert!(explorer.contains("Compact deterministic report:"));
+        assert!(explorer.contains("Decision: TOP 2 CANDIDATES"));
+        assert!(explorer.contains("#1 Rosenborg - Brann"));
+        assert!(explorer.contains("Strict rules status: fallback candidate"));
+        assert!(explorer.contains("Football context checklist:"));
+        assert!(explorer.contains("Learning: history: no settled learning data available"));
+        assert!(!explorer.contains("Explanation:"));
+        assert!(!explorer.contains("Explorer output:"));
+
+        assert!(
+            client.calls[1]
+                .input
+                .contains("Explorer output:\n\nexplorer summary")
+        );
+        assert!(!client.calls[1].input.contains("Reviewer output:"));
+        assert!(
+            client.calls[2]
+                .input
+                .contains("Reviewer output:\n\nreviewer challenge")
+        );
+        assert!(
+            client.calls[3]
+                .input
+                .contains("Risk manager output:\n\nrisk notes")
+        );
+    }
+
+    struct MockAiClient {
+        outputs: VecDeque<String>,
+        calls: Vec<MockCall>,
+    }
+
+    struct MockCall {
+        name: String,
+        input: String,
+    }
+
+    impl MockAiClient {
+        fn new(outputs: impl IntoIterator<Item = &'static str>) -> Self {
+            Self {
+                outputs: outputs.into_iter().map(str::to_string).collect(),
+                calls: Vec::new(),
+            }
+        }
+    }
+
+    impl AiAgentClient for MockAiClient {
+        fn call_agent(
+            &mut self,
+            name: &str,
+            _instructions: &str,
+            input: &str,
+        ) -> Result<String, String> {
+            self.calls.push(MockCall {
+                name: name.to_string(),
+                input: input.to_string(),
+            });
+            self.outputs
+                .pop_front()
+                .ok_or_else(|| format!("missing mock output for {name}"))
+        }
+    }
+
+    const WORKFLOW_FIXTURE: &str = r#"Daily betting agent recommendation
+==================================
+
+Rules: Norsk Tipping preferred odds 1.10-1.30, hard research ceiling 1.35, min probability 79.00%, min confidence 65.00%, min edge 1.50 pp when model/reference data exists
+Scope: football | Pick target: 2
+Decision: TOP 2 CANDIDATES
+Reason: fallback fill
+Top 2 candidates:
+
+#1 Rosenborg - Brann
+Sport: Football
+Competition: Eliteserien
+Market: Double chance
+Selection: Rosenborg or draw
+Norsk Tipping odds: 1.27
+Estimated probability: 83.50%
+Confidence score: 78/100
+Strict rules status: pass
+Learning: history: no settled learning data available
+Football context checklist:
+- Lineup/rotation: positive: candidate notes: lineups stable
+Explanation: verbose text should not be replayed to AI roles
+
+#2 Arsenal - Everton
+Sport: Football
+Competition: Premier League
+Market: Match winner
+Selection: Arsenal
+Norsk Tipping odds: 1.34
+Estimated probability: 84.00%
+Confidence score: 76/100
+Strict rules status: fallback candidate (Norsk Tipping odds 1.34 are above preferred ceiling 1.30; slack fallback only)
+Learning: history: no settled learning data available"#;
 }
