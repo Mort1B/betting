@@ -42,6 +42,18 @@ jobs:
       - name: Install Rust stable
         run: rustup toolchain install stable --profile minimal
 
+      - name: Cache Cargo build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: Generate static report
         env:
           BETTING_REPO_DIR: ${{ github.workspace }}

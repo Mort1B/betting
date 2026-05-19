@@ -167,7 +167,7 @@ Validation:
 - Compare token estimate and output quality on the same deterministic fixture.
 
 ### 7. Cache CI Build And Audit Work
-
+Status: completed on 2026-05-19. Daily and security workflows now cache Cargo builds, and security pins plus caches `cargo-audit`.
 Files:
 - `.github/workflows/daily-report.yml`
 - `.github/workflows/security-guardrails.yml`
