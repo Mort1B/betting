@@ -205,12 +205,18 @@ Validation:
   duplicate consensus, and no-match behavior.
 
 ### 9. Split Near-Limit Modules
+Status: completed on 2026-05-19. Report candidate-detail rendering moved to a
+dedicated helper module, and test-only blocks moved out of near-limit runtime
+modules for report, domain, and learning code headroom.
 
 Files:
 - `src/main.rs`
 - `src/report.rs`
+- `src/report/details.rs`
 - `src/domain.rs`
+- `src/domain/tests.rs`
 - `src/agents/learning.rs`
+- `src/agents/learning/tests.rs`
 
 Plan:
 - Split CLI parsing out of `src/main.rs`.
