@@ -38,9 +38,6 @@ impl RiskAgent {
         .to_lowercase();
         for (needle, penalty) in [
             ("injury", 0.08),
-            ("rotation", 0.07),
-            ("lineup unknown", 0.07),
-            ("weather", 0.04),
             ("derby", 0.04),
             ("cup", 0.03),
             ("back-to-back", 0.04),
@@ -122,7 +119,7 @@ mod tests {
 
     #[test]
     fn keeps_market_implied_candidates_viable_without_external_odds() {
-        let candidate = candidate("Football", "Eliteserien", "Main market", "lineups stable");
+        let candidate = candidate("Football", "Eliteserien", "Main market", "strong form");
         let probability = ProbabilityAssessment {
             estimated_probability: candidate.implied_probability(),
             implied_probability: candidate.implied_probability(),

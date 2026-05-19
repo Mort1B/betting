@@ -20,6 +20,7 @@ Write the final user-facing report.
 
 - sport and competition,
 - event,
+- kickoff time,
 - market,
 - selection,
 - Norsk Tipping odds,

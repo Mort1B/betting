@@ -77,17 +77,19 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Penalizes contextual risk terms across sport, competition, event, market,
   selection, and notes.
 - Penalizes entertainment/special markets, volatile expanded markets, friendlies,
-  injury/rotation/weather risk, and research warnings.
+  injury risk, schedule pressure, and research warnings.
 - Applies small confidence adjustments from matched research warnings or
   positive signals.
 - Produces explicit risk flags for the report.
 
 `MarketResearchClient`
 
-- Fetches up to 10 configured research sources per run by default.
+- Fetches up to 13 configured research sources in scheduled runs by default.
 - Uses `examples/football_research_sources.txt` in scheduled football runs.
-- Supports Reddit JSON listing URLs and normal HTML pages.
-- Extracts the top configured Reddit posts/items from listing sources.
+- Supports Reddit JSON listing URLs, Reddit daily-thread searches, and normal
+  HTML pages.
+- Extracts the top configured Reddit posts/items from listing sources and top
+  comments from selected daily-thread sources.
 - Produces page-level positive, warning, and decimal-price signals.
 - Keeps fetch failures visible as source-error research notes.
 
@@ -102,9 +104,8 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 `FootballContextAgent`
 
 - Runs after generic research matching and before final selection.
-- Adds a per-candidate checklist for form, injuries/suspensions,
-  lineup/rotation, motivation, schedule/travel, weather/venue, and market
-  context.
+- Adds a per-candidate checklist for form, injuries/suspensions, motivation,
+  schedule/travel, and market context.
 - Uses candidate notes and candidate-specific research matches only.
 - Marks missing evidence as `unknown` instead of inventing team context.
 - Applies small visible confidence adjustments for positive or warning context,
@@ -182,15 +183,15 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Shows whether pick history is enabled for the run.
 - Summarizes source coverage, source errors, missing football context, and
   learning status before the ranked picks.
-- Keeps per-pick strict status, football checklist, learning note, research
-  notes, and fallback warnings visible.
+- Keeps per-pick kickoff time, strict status, football checklist, learning note,
+  research notes, and fallback warnings visible.
 
 ## Probability And Context
 
 The default workflow does not require external comparison odds. Norsk Tipping's
 price gives a market-implied success baseline, then the risk layer adjusts the
 candidate for practical context: market type, sport, competition, event notes,
-injury/rotation/weather terms, entertainment markets, friendlies, and research
+injury terms, schedule pressure, entertainment markets, friendlies, and research
 warnings.
 
 If `model_probability` or `reference_odds` is supplied, the system also evaluates
@@ -204,8 +205,8 @@ and context.
    research band from live Oddsen data, with `1.10-1.30` preferred.
 2. Score candidates from market-implied probability, context confidence,
    research signals, and optional model/reference data.
-3. Add risk notes after checking injury, lineup, motivation, market type, and
-   market context.
+3. Add risk notes after checking injury, motivation, schedule/travel, market
+   type, and market context.
 4. Run with research enabled:
 
 ```bash

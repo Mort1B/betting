@@ -195,7 +195,7 @@ mod tests {
     #[test]
     fn parses_quoted_candidates() {
         let csv = "id,sport,competition,event,market,selection,norsk_tipping_odds,model_probability,reference_odds,confidence,starts_at,notes\n\
-                   t1,Football,Eliteserien,\"Home, Away\",Winner,Home,1.22,0.86,1.18,0.72,2026-05-15T18:00:00+02:00,\"lineup checked\"";
+                   t1,Football,Eliteserien,\"Home, Away\",Winner,Home,1.22,0.86,1.18,0.72,2026-05-15T18:00:00+02:00,\"strong form\"";
 
         let parsed = parse_candidates_csv(csv).expect("valid CSV");
         assert_eq!(parsed.len(), 1);

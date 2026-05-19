@@ -28,6 +28,7 @@ pub struct ResearchSource {
 pub enum ResearchSourceKind {
     Html,
     RedditJson,
+    RedditThreadSearch,
 }
 
 impl ResearchSourceKind {
@@ -35,6 +36,7 @@ impl ResearchSourceKind {
         match raw.trim().to_lowercase().as_str() {
             "html" | "web" | "page" => Ok(Self::Html),
             "reddit_json" | "reddit" => Ok(Self::RedditJson),
+            "reddit_thread_search" | "reddit_daily_thread" => Ok(Self::RedditThreadSearch),
             other => Err(format!("unsupported research source kind: {other}")),
         }
     }
@@ -81,6 +83,10 @@ mod tests {
         assert_eq!(
             ResearchSourceKind::parse("reddit").expect("valid"),
             ResearchSourceKind::RedditJson
+        );
+        assert_eq!(
+            ResearchSourceKind::parse("reddit_daily_thread").expect("valid"),
+            ResearchSourceKind::RedditThreadSearch
         );
         assert_eq!(
             ResearchSourceKind::parse("web").expect("valid"),

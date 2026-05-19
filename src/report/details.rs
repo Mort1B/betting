@@ -17,6 +17,9 @@ fn push_candidate_details(output: &mut String, candidate: &EvaluatedCandidate) {
         candidate.candidate.competition
     ));
     output.push_str(&format!("Starts at: {}\n", candidate.candidate.starts_at));
+    if let Some(kickoff_time) = kickoff_time(&candidate.candidate.starts_at) {
+        output.push_str(&format!("Kickoff time: {kickoff_time}\n"));
+    }
     output.push_str(&format!("Market: {}\n", candidate.candidate.market));
     output.push_str(&format!("Selection: {}\n", candidate.candidate.selection));
     output.push_str(&format!(
@@ -220,4 +223,23 @@ fn price_comparison(norsk_tipping_odds: f64, reference_odds: f64) -> String {
 
 fn clean_zero(value: f64) -> f64 {
     if value.abs() < 0.005 { 0.0 } else { value }
+}
+
+fn kickoff_time(starts_at: &str) -> Option<String> {
+    let date = starts_at.get(..10)?;
+    let time = starts_at.get(11..16)?;
+    Some(format!("{time} on {date} (Oslo time)"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::kickoff_time;
+
+    #[test]
+    fn formats_kickoff_time_from_iso_start() {
+        assert_eq!(
+            kickoff_time("2026-05-20T04:00:00.000+02:00").as_deref(),
+            Some("04:00 on 2026-05-20 (Oslo time)")
+        );
+    }
 }

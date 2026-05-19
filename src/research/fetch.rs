@@ -1,13 +1,16 @@
 use reqwest::blocking::Client;
+use reqwest::header::{ACCEPT, ACCEPT_LANGUAGE, HeaderMap, HeaderValue};
 use scraper::{Html, Selector};
-use serde::Deserialize;
+use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
 use super::analyze::{ResearchDigest, ResearchPage, analyze_text};
+use super::reddit::{listing_pages, thread_search_pages};
 use super::source::{ResearchOptions, ResearchSource, ResearchSourceKind};
 
 const MAX_PARALLEL_FETCHES: usize = 4;
+const USER_AGENT: &str = "betting-daily-agent/0.1 by local-user";
 
 #[derive(Debug, Clone)]
 pub struct MarketResearchClient {
@@ -16,9 +19,17 @@ pub struct MarketResearchClient {
 
 impl MarketResearchClient {
     pub fn new() -> Result<Self, String> {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            ACCEPT,
+            HeaderValue::from_static("application/json,text/html;q=0.9,*/*;q=0.8"),
+        );
+        headers.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("en-US,en;q=0.9"));
         let http = Client::builder()
             .timeout(Duration::from_secs(15))
-            .user_agent("betting-daily-agent/0.1 by local-user")
+            .user_agent(USER_AGENT)
+            .default_headers(headers)
+            .http1_only()
             .build()
             .map_err(|error| format!("failed to build HTTP client: {error}"))?;
 
@@ -78,25 +89,70 @@ impl MarketResearchClient {
         source: &ResearchSource,
         max_items: usize,
     ) -> Result<Vec<ResearchPage>, String> {
-        let response = self
-            .http
-            .get(&source.url)
-            .send()
-            .map_err(|error| format!("{}: {error}", source.url))?;
-
-        if !response.status().is_success() {
-            return Err(format!("{} returned {}", source.url, response.status()));
-        }
-
-        let body = response
-            .text()
-            .map_err(|error| format!("{} body read failed: {error}", source.url))?;
+        let body = match source.kind {
+            ResearchSourceKind::Html => self.fetch_body(&source.url)?,
+            ResearchSourceKind::RedditJson | ResearchSourceKind::RedditThreadSearch => {
+                self.fetch_reddit_body(&source.url)?
+            }
+        };
 
         match source.kind {
             ResearchSourceKind::Html => Ok(vec![html_page(source, &body)]),
-            ResearchSourceKind::RedditJson => reddit_pages(source, &body, max_items),
+            ResearchSourceKind::RedditJson => listing_pages(source, &body, max_items),
+            ResearchSourceKind::RedditThreadSearch => {
+                thread_search_pages(source, &body, max_items, |url| self.fetch_reddit_body(url))
+            }
         }
     }
+
+    fn fetch_body(&self, url: &str) -> Result<String, String> {
+        let response = self
+            .http
+            .get(url)
+            .send()
+            .map_err(|error| format!("{url}: {error}"))?;
+
+        if !response.status().is_success() {
+            return Err(format!("{url} returned {}", response.status()));
+        }
+
+        response
+            .text()
+            .map_err(|error| format!("{url} body read failed: {error}"))
+    }
+
+    fn fetch_reddit_body(&self, url: &str) -> Result<String, String> {
+        match curl_fetch_body(url) {
+            Ok(body) => Ok(body),
+            Err(curl_error) => self
+                .fetch_body(url)
+                .map_err(|error| format!("curl failed: {curl_error}; reqwest failed: {error}")),
+        }
+    }
+}
+
+fn curl_fetch_body(url: &str) -> Result<String, String> {
+    let output = Command::new("curl")
+        .args([
+            "-L",
+            "--fail",
+            "--silent",
+            "--show-error",
+            "--max-time",
+            "20",
+            "-A",
+            USER_AGENT,
+            url,
+        ])
+        .output()
+        .map_err(|error| format!("failed to start curl: {error}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("curl exited {}: {}", output.status, stderr.trim()));
+    }
+
+    String::from_utf8(output.stdout).map_err(|error| format!("curl output was not UTF-8: {error}"))
 }
 
 fn flatten_ordered_pages(mut indexed_pages: Vec<(usize, Vec<ResearchPage>)>) -> Vec<ResearchPage> {
@@ -141,66 +197,8 @@ fn html_page(source: &ResearchSource, body: &str) -> ResearchPage {
     )
 }
 
-fn reddit_pages(
-    source: &ResearchSource,
-    body: &str,
-    max_items: usize,
-) -> Result<Vec<ResearchPage>, String> {
-    let listing = serde_json::from_str::<RedditListing>(body)
-        .map_err(|error| format!("{} JSON parse failed: {error}", source.url))?;
-    let mut pages = Vec::new();
-
-    for child in listing.data.children.into_iter().take(max_items) {
-        let text = format!(
-            "{}\n{}\n{}",
-            child.data.title,
-            child.data.selftext.unwrap_or_default(),
-            child.data.url.unwrap_or_default()
-        );
-        let signals = analyze_text(&source.name, &text);
-        let url = child
-            .data
-            .permalink
-            .map(|path| format!("https://www.reddit.com{path}"))
-            .unwrap_or_else(|| source.url.clone());
-        pages.push(ResearchPage::new(
-            source.name.clone(),
-            url,
-            child.data.title,
-            text,
-            signals,
-            None,
-        ));
-    }
-
-    Ok(pages)
-}
-
 fn parse_selector(selector: &str) -> Option<Selector> {
     Selector::parse(selector).ok()
-}
-
-#[derive(Debug, Deserialize)]
-struct RedditListing {
-    data: RedditListingData,
-}
-
-#[derive(Debug, Deserialize)]
-struct RedditListingData {
-    children: Vec<RedditChild>,
-}
-
-#[derive(Debug, Deserialize)]
-struct RedditChild {
-    data: RedditPost,
-}
-
-#[derive(Debug, Deserialize)]
-struct RedditPost {
-    title: String,
-    selftext: Option<String>,
-    permalink: Option<String>,
-    url: Option<String>,
 }
 
 #[cfg(test)]

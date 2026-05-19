@@ -21,9 +21,8 @@ This is intentionally optimized:
 - Looks for the strongest value evidence.
 - Checks Norsk Tipping odds against reference odds, model probability, EV, and
   research matches.
-- Checks the football context checklist for form, injuries/suspensions,
-  lineup/rotation, motivation, schedule/travel, weather/venue, and market
-  context.
+- Checks kickoff time and the football context checklist for form,
+  injuries/suspensions, motivation, schedule/travel, and market context.
 - Checks the learning note and treats no-history or insufficient-history output
   as a gap, not as support.
 - Calls out missing comparison data.
@@ -43,19 +42,19 @@ This is intentionally optimized:
 - Downgrades candidates when risk is not reflected in the deterministic score.
 - Downgrades unresolved or negative football context when the supplied report
   supports it.
-- Preserves fallback warnings and questions unresolved team news, motivation,
-  lineup, schedule, market context, or learning support.
+- Preserves fallback warnings and questions unresolved injuries/suspensions,
+  motivation, schedule/travel, market context, or learning support.
 - Never treats a bet as guaranteed.
 
 `Output Writer`
 
 - Writes the final top-5 user-facing report.
-- Includes sport, competition, event, market, selection, Norsk Tipping odds,
-  football context, reference-market comparison, rationale, risks,
+- Includes sport, competition, event, kickoff time, market, selection, Norsk
+  Tipping odds, football context, reference-market comparison, rationale, risks,
   learning note, strict-rule status, and confidence score out of 100.
 - Preserves fallback warnings when the deterministic report had to fill the top
   5 from best available candidates.
-- Does not claim form, injury, motivation, lineup, or history facts unless they
+- Does not claim form, injury, motivation, schedule, market, or history facts unless they
   are present in the deterministic report or prior agent output.
 
 ## Model

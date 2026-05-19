@@ -1,5 +1,6 @@
 mod analyze;
 mod fetch;
+mod reddit;
 mod source;
 
 pub use analyze::{ResearchDigest, assess_candidate_research};

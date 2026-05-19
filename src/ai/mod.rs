@@ -343,6 +343,8 @@ Top 2 candidates:
 #1 Rosenborg - Brann
 Sport: Football
 Competition: Eliteserien
+Starts at: 2026-05-15T18:00:00+02:00
+Kickoff time: 18:00 on 2026-05-15 (Oslo time)
 Market: Double chance
 Selection: Rosenborg or draw
 Norsk Tipping odds: 1.27
@@ -351,7 +353,7 @@ Confidence score: 78/100
 Strict rules status: pass
 Learning: history: no settled learning data available
 Football context checklist:
-- Lineup/rotation: positive: candidate notes: lineups stable
+- Form: positive: candidate notes: strong form
 Explanation: verbose text should not be replayed to AI roles
 
 #2 Arsenal - Everton

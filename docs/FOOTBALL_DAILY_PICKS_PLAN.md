@@ -17,9 +17,9 @@ Target behavior:
 - the report returns fewer than 5 only when fewer football candidates exist,
 - `NO BET` is used only when there are no football candidates to rank,
 - previous pick outcomes inform future confidence and risk adjustments,
-- research evidence is organized around form, injuries, suspensions, lineups,
+- research evidence is organized around form, injuries, suspensions,
   motivation, schedule pressure, market context, and other football-specific
-  risks.
+  risks, with kickoff time visible per pick.
 
 ## Current Gaps
 
@@ -112,11 +112,9 @@ important context.
 - Expand research analysis into categories:
   - recent form and home/away form,
   - injuries and suspensions,
-  - likely lineups and rotation,
   - motivation such as title race, promotion, relegation, European qualification,
     cup priority, or dead-rubber risk,
   - schedule congestion, travel, fatigue, and short rest,
-  - weather, pitch, venue, derby/rivalry, and manager-change context,
   - market movement or price disagreement when supplied.
 - Store category findings as structured candidate context, not only free-text
   notes.
@@ -130,7 +128,7 @@ important context.
 Acceptance criteria:
 
 - Every reported pick includes a football context checklist.
-- A candidate with warning evidence for injuries, rotation, or motivation is
+- A candidate with warning evidence for injuries, schedule pressure, or motivation is
   downgraded in a transparent way.
 - A candidate with no candidate-specific research does not receive a fabricated
   context boost.
@@ -248,12 +246,12 @@ Status: implemented.
 Make the OpenAI review layer inspect the same football context as the
 deterministic layer.
 
-- Update Explorer instructions to summarize evidence for form, injuries,
-  suspensions, motivation, lineup risk, schedule pressure, and market context.
+- Update Explorer instructions to summarize evidence for kickoff time, form,
+  injuries, suspensions, motivation, schedule pressure, and market context.
 - Update Reviewer instructions to challenge weak football context and flag
   missing or stale research.
-- Update Risk Manager instructions to downgrade candidates when team news,
-  motivation, lineup, or schedule risk is unresolved.
+- Update Risk Manager instructions to downgrade candidates when injuries,
+  motivation, schedule pressure, or market context is unresolved.
 - Update Output Writer instructions to produce top 5 and include the football
   checklist and learning note.
 - Keep the rule that agents use supplied evidence only.

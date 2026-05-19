@@ -14,8 +14,8 @@ tool does not research or rank prices below `1.10` or above `1.35`.
 - Rust CLI for deterministic candidate scoring.
 - Live Norsk Tipping Oddsen loader for same-day candidates.
 - CSV candidate input for fixtures, manual runs, and fallback testing.
-- Structured football context checks for form, injuries/suspensions, lineups,
-  motivation, schedule/travel, weather/venue, and market context.
+- Structured football context checks for form, injuries/suspensions,
+  motivation, schedule/travel, and market context.
 - Deterministic learning from settled historical picks, capped so history cannot
   overpower current context.
 - Visible agent definitions in `.agents/`.
@@ -111,6 +111,8 @@ Live source controls:
 - `BETTING_NT_LATEST_START` defaults to `05:00` on the next Oslo date. Runs
   before `05:00` keep the report date on the previous day so the midnight
   workflow refreshes the same 16:00-05:00 card.
+- `BETTING_MAX_RESEARCH_PAGES=13` is the scheduled default so Reddit daily
+  thread checks and football news or market pages are all included.
 - `BETTING_REFERENCE_ODDS_CSV=/path/to/reference_odds.csv` optionally adds
   external comparison prices for audit context. It is not required.
 - `BETTING_CANDIDATE_SOURCE=csv` uses `BETTING_INPUT_CSV` instead.
@@ -160,7 +162,7 @@ Important optional columns:
 - `model_probability`: estimated win probability from your own model or manual
   research.
 - `reference_odds`: comparable market price from another source.
-- `confidence`: 0.0-1.0 confidence after checking lineup, injury, motivation,
+- `confidence`: 0.0-1.0 confidence after checking injury, motivation,
   market stability, and context.
 - `notes`: free-text risk/context notes.
 
@@ -176,15 +178,16 @@ Defaults:
 
 Live Norsk Tipping imports use market-implied probability as the success
 baseline, then the risk layer adjusts confidence for context such as market type,
-sport, entertainment/special markets, friendlies, injuries, rotation, weather,
+sport, entertainment/special markets, friendlies, injuries, schedule pressure,
 research warnings, and structured football context warnings. This keeps the
 default workflow focused on the best available candidates without requiring
 external odds.
 
 Each reported pick includes a football context checklist covering form,
-injuries/suspensions, lineup/rotation, motivation, schedule/travel,
-weather/venue, and market context. Missing candidate-specific evidence is shown
-as `unknown` and does not create a confidence boost.
+injuries/suspensions, motivation, schedule/travel, and market context. Weather
+and lineup/rotation are intentionally left out of the checklist. Missing
+candidate-specific evidence is shown as `unknown` and does not create a
+confidence boost.
 
 When previous settled history is available, the learning layer compares today's
 pick to stable football buckets such as competition, market type, odds range,
@@ -245,11 +248,17 @@ file, but scheduled football runs use the football-specific list.
 Supported source kinds:
 
 - `reddit_json`
+- `reddit_thread_search`
 - `html`
 
 Research is treated as weak supporting evidence. It can adjust confidence, but
 it must not override hard probability, confidence, and odds-band gates.
 Fetch failures are shown as source-error notes so missing research is visible.
+The scheduled football source list includes Reddit daily-thread comment checks
+for `r/soccerbetting` and `r/sportsbetting`, plus a `r/sportsbook` soccer daily
+discussion fallback. Current `r/sportsbetting` searches did not expose a stable
+daily picks thread; an empty daily-thread search is treated as no available
+research rather than a source failure.
 
 ## Pick History
 

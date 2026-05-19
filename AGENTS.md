@@ -31,8 +31,7 @@ Produce a daily top-5 shortlist of bets that:
   has fewer than 5 separate matches.
 - Calculates probability, confidence, contextual risk, and optional value/edge.
 - Adds a structured football context checklist for form, injuries/suspensions,
-  lineup/rotation, motivation, schedule/travel, weather/venue, and market
-  context.
+  motivation, schedule/travel, and market context.
 - Applies capped learning adjustments from settled historical football buckets
   when enough similar win/loss picks exist.
 - Does not require external comparison odds for live Norsk Tipping candidates.
@@ -68,8 +67,8 @@ https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/history.jsonl
 - Finds the strongest available candidate evidence.
 - Reviews probability, context risk, confidence, optional value/edge, and
   research.
-- Reviews football context categories for form, injuries/suspensions, lineup,
-  motivation, schedule, weather/venue, and market context.
+- Reviews football context categories for form, injuries/suspensions,
+  motivation, schedule/travel, and market context.
 - Reviews the learning note without treating no-history or insufficient-history
   output as support.
 - Flags missing context that affects confidence.
@@ -84,16 +83,17 @@ https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/history.jsonl
 `Risk Manager`
 
 - Reviews downside risk, missing data, and no-bet triggers.
-- Downgrades or questions unresolved team news, motivation, lineup, schedule,
-  market context, and insufficient learning support.
+- Downgrades or questions unresolved injury/suspension, motivation,
+  schedule/travel, market context, and insufficient learning support.
 - Checks confidence against evidence.
 - Prevents guarantee language.
 
 `Output Writer`
 
 - Writes the final concise report.
-- Includes sport, event, market, selection, Norsk Tipping odds, comparison,
-  rationale, football checklist, learning note, risk, and confidence.
+- Includes sport, event, kickoff time, market, selection, Norsk Tipping odds,
+  comparison, rationale, football checklist, learning note, risk, and
+  confidence.
 
 ## Hard Rules
 

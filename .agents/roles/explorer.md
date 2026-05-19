@@ -18,9 +18,9 @@ Find the strongest probability and context evidence for each top candidate.
 ## Responsibilities
 
 - Interpret Norsk Tipping market-implied probability.
-- Identify important context: form, injuries/suspensions, lineup/rotation,
-  motivation, schedule/travel, weather/venue, market type, research support, and
-  warnings.
+- Identify important context: kickoff time, form, injuries/suspensions,
+  motivation, schedule/travel, market type, market context, research support,
+  and warnings.
 - Highlight missing or unknown context data without turning it into evidence.
 - Summarize the learning note without overstating small or insufficient history
   samples.

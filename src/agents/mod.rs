@@ -169,7 +169,7 @@ mod tests {
             reference_odds: None,
             confidence,
             starts_at: "2026-05-15T18:00:00+02:00".to_string(),
-            notes: "lineups stable".to_string(),
+            notes: "strong form".to_string(),
         }
     }
 

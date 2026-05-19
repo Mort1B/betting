@@ -203,22 +203,6 @@ const CATEGORY_RULES: &[CategoryRule] = &[
         ],
     },
     CategoryRule {
-        name: "Lineup/rotation",
-        positive: &[
-            "confirmed lineup",
-            "lineups stable",
-            "strong lineup",
-            "first-choice",
-        ],
-        warning: &[
-            "rotation",
-            "rotated",
-            "resting",
-            "lineup unknown",
-            "reserve side",
-        ],
-    },
-    CategoryRule {
         name: "Motivation",
         positive: &[
             "must win",
@@ -243,16 +227,6 @@ const CATEGORY_RULES: &[CategoryRule] = &[
             "travel fatigue",
             "congested",
             "midweek",
-        ],
-    },
-    CategoryRule {
-        name: "Weather/venue",
-        positive: &["home advantage", "familiar pitch"],
-        warning: &[
-            "heavy rain",
-            "strong wind",
-            "neutral venue",
-            "artificial pitch",
         ],
     },
     CategoryRule {
@@ -308,7 +282,7 @@ mod tests {
             pages: vec![page(
                 "preview",
                 "Rosenborg Brann preview",
-                "Rosenborg - Brann has injury news, rotation risk and could be a dead rubber.",
+                "Rosenborg - Brann has injury news, short rest and could be a dead rubber.",
             )],
         };
 
@@ -325,7 +299,7 @@ mod tests {
             pages: vec![page(
                 "preview",
                 "Rosenborg Brann preview",
-                "Rosenborg - Brann has a stable preview. analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis Another unrelated match has injury news and rotation risk.",
+                "Rosenborg - Brann has a stable preview. analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis analysis Another unrelated match has injury news and short rest.",
             )],
         };
 
@@ -337,7 +311,7 @@ mod tests {
 
     #[test]
     fn uses_candidate_notes_as_supplied_context() {
-        let assessment = assess_football_context(&candidate("lineups stable"), None);
+        let assessment = assess_football_context(&candidate("strong form"), None);
 
         assert_eq!(assessment.matched_pages, 0);
         assert_eq!(assessment.confidence_adjustment, 0.0);

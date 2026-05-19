@@ -1,6 +1,6 @@
 pub(super) const EXPLORER_INSTRUCTIONS: &str = r#"You are the Explorer agent for a daily betting workflow.
 Use the supplied deterministic report only. Identify the strongest probability, context, confidence, and research signals for the top candidates.
-For every candidate, summarize supplied evidence for form, injuries/suspensions, lineups/rotation, motivation, schedule/travel pressure, weather/venue, market context, the learning note, research matches, and optional model/reference evidence.
+For every candidate, summarize supplied evidence for kickoff time, form, injuries/suspensions, motivation, schedule/travel pressure, market context, the learning note, research matches, and optional model/reference evidence.
 Treat unknown football checklist items as missing evidence, not as positive or negative facts. Do not infer team news, motivation, injuries, odds, probabilities, sources, or results beyond the supplied report. Keep output concise."#;
 
 pub(super) const REVIEWER_INSTRUCTIONS: &str = r#"You are the Reviewer agent.
@@ -11,14 +11,14 @@ Do not invent facts, do not add unsupplied football context, do not treat slack 
 
 pub(super) const RISK_MANAGER_INSTRUCTIONS: &str = r#"You are the Risk Manager agent.
 Identify downside risks, confidence concerns, missing data, and no-bet triggers. Treat gambling outcomes as uncertain and never imply a guaranteed win.
-Downgrade or question candidates when injuries, suspensions, lineup, rotation, motivation, schedule, weather, venue, market context, or learning support is unresolved, negative, or insufficient in the supplied report.
+Downgrade or question candidates when injuries, suspensions, motivation, schedule/travel pressure, market context, or learning support is unresolved, negative, or insufficient in the supplied report.
 Preserve deterministic fallback status and rejection reasons; do not turn a fallback candidate into a strict recommendation.
 Return concise risk notes for each top candidate and say whether any candidate should be downgraded.
 Use only supplied facts."#;
 
 pub(super) const OUTPUT_WRITER_INSTRUCTIONS: &str = r#"You are the Output Writer agent.
 Write the final user-facing daily report using the deterministic report plus the Explorer, Reviewer, and Risk Manager outputs.
-The output must include the top 5 candidates when available, preserving deterministic rank order. For each candidate include: sport/competition, event, market, selection, Norsk Tipping odds, probability/confidence basis, football context checklist summary, learning note, reference-market comparison only when supplied, main risks, strict rules status, and confidence score out of 100.
+The output must include the top 5 candidates when available, preserving deterministic rank order. For each candidate include: sport/competition, event, kickoff time, market, selection, Norsk Tipping odds, probability/confidence basis, football context checklist summary, learning note, reference-market comparison only when supplied, main risks, strict rules status, and confidence score out of 100.
 If the deterministic report says TOP 5 CANDIDATES, preserve those five ranked candidates and their fallback warnings instead of converting the report to NO BET.
 If the deterministic report says NO BET because no viable candidates were supplied, output NO BET and explain why.
 Keep unknown football context visible as unknown. Keep it practical, concise, and suitable for an iPhone notification/page. Do not invent facts."#;
@@ -101,6 +101,7 @@ const COMPACT_REPORT_PREFIXES: &[&str] = &[
     "Event:",
     "Competition:",
     "Starts at:",
+    "Kickoff time:",
     "Market:",
     "Selection:",
     "Norsk Tipping odds:",
@@ -151,7 +152,8 @@ mod tests {
             "#1 Rosenborg - Brann",
             "Norsk Tipping odds: 1.27",
             "Strict rules status: pass",
-            "- Lineup/rotation: positive: candidate notes: lineups stable",
+            "Kickoff time: 18:00 on 2026-05-15 (Oslo time)",
+            "- Form: positive: candidate notes: strong form",
             "Learning: history: no settled learning data available",
             "Risk flags: 1 research warning mention(s)",
             "Research notes:",
@@ -193,6 +195,8 @@ Top 2 candidates:
 #1 Rosenborg - Brann
 Sport: Football
 Competition: Eliteserien
+Starts at: 2026-05-15T18:00:00+02:00
+Kickoff time: 18:00 on 2026-05-15 (Oslo time)
 Market: Double chance
 Selection: Rosenborg or draw
 Norsk Tipping odds: 1.27
@@ -201,7 +205,7 @@ Confidence score: 78/100
 Strict rules status: pass
 Learning: history: no settled learning data available
 Football context checklist:
-- Lineup/rotation: positive: candidate notes: lineups stable
+- Form: positive: candidate notes: strong form
 Risk flags: 1 research warning mention(s)
 Research notes:
 - source error: Example feed timeout

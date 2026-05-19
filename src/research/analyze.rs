@@ -152,8 +152,6 @@ pub fn analyze_text(source_name: &str, text: &str) -> Vec<ResearchSignal> {
         "avoid",
         "trap",
         "injury",
-        "rotation",
-        "lineup unknown",
         "suspended",
         "doubtful",
         "no bet",
@@ -225,11 +223,11 @@ mod tests {
     fn extracts_research_signals() {
         let signals = analyze_text(
             "test",
-            "Rosenborg looks like value at 1.27 but lineup unknown.",
+            "Rosenborg looks like value at 1.27 but has an injury concern.",
         );
 
         assert!(signals.contains(&ResearchSignal::Positive("value".to_string())));
-        assert!(signals.contains(&ResearchSignal::Warning("lineup unknown".to_string())));
+        assert!(signals.contains(&ResearchSignal::Warning("injury".to_string())));
         assert!(
             signals
                 .iter()

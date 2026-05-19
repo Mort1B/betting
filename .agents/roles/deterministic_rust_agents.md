@@ -46,8 +46,7 @@ File: `src/agents/risk.rs`
 - Penalizes volatile expanded markets such as corners, cards, and goal scorers.
 - Integrates research warning signals.
 - Integrates football context warnings for form, injuries/suspensions,
-  lineup/rotation, motivation, schedule/travel, weather/venue, and market
-  context.
+  motivation, schedule/travel, and market context.
 
 ## LearningAgent
 
