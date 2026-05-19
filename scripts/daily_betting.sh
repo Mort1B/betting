@@ -24,11 +24,28 @@ PICK_COUNT="${BETTING_PICK_COUNT:-5}"
 MIN_ODDS="${BETTING_MIN_ODDS:-1.10}"
 MAX_ODDS="${BETTING_MAX_ODDS:-1.30}"
 NT_EVENTS_PER_SPORT="${BETTING_NT_EVENTS_PER_SPORT:-35}"
-NT_EARLIEST_START="${BETTING_NT_EARLIEST_START:-$(date +%Y-%m-%dT%H:%M)}"
 RESEARCH_SOURCES="${BETTING_RESEARCH_SOURCES:-$REPO_DIR/examples/football_research_sources.txt}"
 REFERENCE_ODDS_CSV="${BETTING_REFERENCE_ODDS_CSV:-}"
-TODAY="${BETTING_DATE:-$(date +%F)}"
 DELIVERY="${BETTING_DELIVERY:-pushover}"
+
+default_report_date() {
+  if [[ -n "${BETTING_DATE:-}" ]]; then
+    printf '%s\n' "$BETTING_DATE"
+    return
+  fi
+
+  local hour
+  hour="$(TZ=Europe/Oslo date +%H)"
+  if ((10#$hour < 5)); then
+    TZ=Europe/Oslo date -d "yesterday" +%F
+  else
+    TZ=Europe/Oslo date +%F
+  fi
+}
+
+TODAY="$(default_report_date)"
+NT_EARLIEST_START="${BETTING_NT_EARLIEST_START:-${TODAY}T16:00}"
+NT_LATEST_START="${BETTING_NT_LATEST_START:-$(TZ=Europe/Oslo date -d "$TODAY +1 day" +%Y-%m-%d)T05:00}"
 
 case "$DELIVERY" in
   email)
@@ -68,7 +85,7 @@ case "$CANDIDATE_SOURCE" in
     SOURCE_ARGS=("$INPUT_CSV")
     ;;
   norsk-tipping-live)
-    SOURCE_ARGS=(--norsk-tipping-live --nt-events-per-sport "$NT_EVENTS_PER_SPORT" --nt-earliest-start "$NT_EARLIEST_START")
+    SOURCE_ARGS=(--norsk-tipping-live --nt-events-per-sport "$NT_EVENTS_PER_SPORT" --nt-earliest-start "$NT_EARLIEST_START" --nt-latest-start "$NT_LATEST_START")
     ;;
   *)
     echo "BETTING_CANDIDATE_SOURCE must be csv or norsk-tipping-live" >&2

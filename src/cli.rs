@@ -44,6 +44,11 @@ impl CliOptions {
                     live_options.earliest_start =
                         Some(next_value(&mut args, "--nt-earliest-start")?)
                 }
+                "--nt-latest-start" => {
+                    let latest_start = next_value(&mut args, "--nt-latest-start")?;
+                    rules.latest_start = Some(latest_start.clone());
+                    live_options.latest_start = Some(latest_start);
+                }
                 "--date" => rules.date = Some(next_value(&mut args, "--date")?),
                 "--sport-scope" => {
                     rules.sport_scope = SportScope::parse(&next_value(&mut args, "--sport-scope")?)?
@@ -117,7 +122,8 @@ impl CliOptions {
          Options:\n\
            --norsk-tipping-live       load live candidates from Norsk Tipping Oddsen\n\
            --nt-events-per-sport N    live source event page size, default 35\n\
-           --nt-earliest-start TEXT   live source cutoff, e.g. 2026-05-16T16:00\n\
+           --nt-earliest-start TEXT   live source earliest cutoff, e.g. 2026-05-16T16:00\n\
+           --nt-latest-start TEXT     live source latest cutoff, e.g. 2026-05-17T05:00\n\
            --date YYYY-MM-DD          only consider events on this date\n\
            --sport-scope TEXT         football or all, default football\n\
            --min-odds N               preferred floor, default 1.10\n\
@@ -235,6 +241,8 @@ mod tests {
                 "2026-05-16",
                 "--nt-earliest-start",
                 "2026-05-16T16:00",
+                "--nt-latest-start",
+                "2026-05-17T05:00",
             ]
             .into_iter()
             .map(str::to_string),
@@ -244,9 +252,14 @@ mod tests {
         match options.source {
             CandidateSource::NorskTippingLive(live) => {
                 assert_eq!(live.earliest_start.as_deref(), Some("2026-05-16T16:00"));
+                assert_eq!(live.latest_start.as_deref(), Some("2026-05-17T05:00"));
             }
             CandidateSource::Csv(_) => panic!("expected live source"),
         }
+        assert_eq!(
+            options.rules.latest_start.as_deref(),
+            Some("2026-05-17T05:00")
+        );
     }
 
     #[test]

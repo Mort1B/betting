@@ -40,9 +40,10 @@ Schedule:
 
 ```text
 14:00 UTC daily
+22:00 UTC daily
 ```
 
-That is 16:00 in Norway during daylight saving time.
+That is 16:00 and midnight in Norway during daylight saving time.
 
 Required GitHub Actions secrets:
 
@@ -106,8 +107,10 @@ Live source controls:
   band. The Rust layer keeps `1.35` as the hard research ceiling.
 - `BETTING_NT_EVENTS_PER_SPORT=35` controls how many events are requested per
   sport.
-- `BETTING_NT_EARLIEST_START` defaults to the current Oslo timestamp in the
-  static publisher so already-started events are skipped.
+- `BETTING_NT_EARLIEST_START` defaults to `16:00` on the report date.
+- `BETTING_NT_LATEST_START` defaults to `05:00` on the next Oslo date. Runs
+  before `05:00` keep the report date on the previous day so the midnight
+  workflow refreshes the same 16:00-05:00 card.
 - `BETTING_REFERENCE_ODDS_CSV=/path/to/reference_odds.csv` optionally adds
   external comparison prices for audit context. It is not required.
 - `BETTING_CANDIDATE_SOURCE=csv` uses `BETTING_INPUT_CSV` instead.

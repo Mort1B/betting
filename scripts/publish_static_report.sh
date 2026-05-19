@@ -7,7 +7,6 @@ PUBLIC_DIR="${BETTING_PUBLIC_DIR:-$REPO_DIR/public}"
 INPUT_CSV="${BETTING_INPUT_CSV:-$REPO_DIR/examples/norsk_tipping_candidates.csv}"
 RESEARCH_SOURCES="${BETTING_RESEARCH_SOURCES:-$REPO_DIR/examples/football_research_sources.txt}"
 REFERENCE_ODDS_CSV="${BETTING_REFERENCE_ODDS_CSV:-}"
-TODAY="${BETTING_DATE:-$(TZ=Europe/Oslo date +%F)}"
 REPORT_TOKEN="${BETTING_REPORT_TOKEN:-${REPORT_TOKEN:-}}"
 ENABLE_AI="${BETTING_ENABLE_AI:-false}"
 OPENAI_MODEL="${BETTING_OPENAI_MODEL:-gpt-5.5}"
@@ -17,8 +16,26 @@ PICK_COUNT="${BETTING_PICK_COUNT:-5}"
 MIN_ODDS="${BETTING_MIN_ODDS:-1.10}"
 MAX_ODDS="${BETTING_MAX_ODDS:-1.30}"
 NT_EVENTS_PER_SPORT="${BETTING_NT_EVENTS_PER_SPORT:-35}"
-NT_EARLIEST_START="${BETTING_NT_EARLIEST_START:-$(TZ=Europe/Oslo date +%Y-%m-%dT%H:%M)}"
 DELIVERY="${BETTING_DELIVERY:-none}"
+
+default_report_date() {
+  if [[ -n "${BETTING_DATE:-}" ]]; then
+    printf '%s\n' "$BETTING_DATE"
+    return
+  fi
+
+  local hour
+  hour="$(TZ=Europe/Oslo date +%H)"
+  if ((10#$hour < 5)); then
+    TZ=Europe/Oslo date -d "yesterday" +%F
+  else
+    TZ=Europe/Oslo date +%F
+  fi
+}
+
+TODAY="$(default_report_date)"
+NT_EARLIEST_START="${BETTING_NT_EARLIEST_START:-${TODAY}T16:00}"
+NT_LATEST_START="${BETTING_NT_LATEST_START:-$(TZ=Europe/Oslo date -d "$TODAY +1 day" +%Y-%m-%d)T05:00}"
 
 if [[ -z "$REPORT_TOKEN" ]]; then
   echo "BETTING_REPORT_TOKEN or REPORT_TOKEN is required" >&2
@@ -70,7 +87,7 @@ case "$CANDIDATE_SOURCE" in
     SOURCE_ARGS=("$INPUT_CSV")
     ;;
   norsk-tipping-live)
-    SOURCE_ARGS=(--norsk-tipping-live --nt-events-per-sport "$NT_EVENTS_PER_SPORT" --nt-earliest-start "$NT_EARLIEST_START")
+    SOURCE_ARGS=(--norsk-tipping-live --nt-events-per-sport "$NT_EVENTS_PER_SPORT" --nt-earliest-start "$NT_EARLIEST_START" --nt-latest-start "$NT_LATEST_START")
     ;;
   *)
     echo "BETTING_CANDIDATE_SOURCE must be csv or norsk-tipping-live" >&2

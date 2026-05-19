@@ -10,6 +10,7 @@ pub(crate) fn candidates_from_events(
     rules: &BettingRules,
     sport_fallback: String,
     earliest_start: Option<&str>,
+    latest_start: Option<&str>,
 ) -> Vec<BetCandidate> {
     let mut candidates = Vec::new();
     let mut seen = HashSet::new();
@@ -25,6 +26,9 @@ pub(crate) fn candidates_from_events(
             continue;
         };
         if starts_before_cutoff(starts_at, earliest_start) {
+            continue;
+        }
+        if starts_after_cutoff(starts_at, latest_start) {
             continue;
         }
         let event_name = event.event_name();
@@ -125,6 +129,15 @@ fn starts_before_cutoff(starts_at: &str, earliest_start: Option<&str>) -> bool {
         .is_some_and(|prefix| prefix < earliest_start)
 }
 
+fn starts_after_cutoff(starts_at: &str, latest_start: Option<&str>) -> bool {
+    let Some(latest_start) = latest_start else {
+        return false;
+    };
+    starts_at
+        .get(..latest_start.len())
+        .is_some_and(|prefix| prefix > latest_start)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -170,6 +183,7 @@ mod tests {
             &BettingRules::default(),
             "Fotball".to_string(),
             None,
+            None,
         );
 
         assert_eq!(candidates.len(), 1);
@@ -213,6 +227,45 @@ mod tests {
             &BettingRules::default(),
             "Fotball".to_string(),
             Some("2026-05-16T16:00"),
+            None,
+        );
+
+        assert!(candidates.is_empty());
+    }
+
+    #[test]
+    fn skips_events_after_live_cutoff() {
+        let response: ContentResponse<Event> = serde_json::from_str(
+            r#"{
+              "data": [{
+                "idfoevent": "late",
+                "name": "Late event",
+                "sporttypename": "Fotball",
+                "tournamentname": "Cup",
+                "tsstart": "2026-05-17T05:30:00.000+02:00",
+                "markets": [{
+                  "name": "HUB",
+                  "isheadmarket": true,
+                  "istradable": true,
+                  "selections": [{
+                    "idfoselection": "s1",
+                    "name": "Home",
+                    "currentpriceup": "3",
+                    "currentpricedown": "20",
+                    "idfobolifestate": "N"
+                  }]
+                }]
+              }]
+            }"#,
+        )
+        .expect("valid fixture");
+
+        let candidates = candidates_from_events(
+            response.data,
+            &BettingRules::default(),
+            "Fotball".to_string(),
+            Some("2026-05-16T16:00"),
+            Some("2026-05-17T05:00"),
         );
 
         assert!(candidates.is_empty());
@@ -257,6 +310,7 @@ mod tests {
             response.data,
             &BettingRules::default(),
             "Fotball".to_string(),
+            None,
             None,
         );
 

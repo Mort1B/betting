@@ -16,6 +16,8 @@ on:
   schedule:
     # 14:00 UTC is 16:00 in Norway during daylight saving time.
     - cron: "0 14 * * *"
+    # 22:00 UTC is midnight in Norway during daylight saving time.
+    - cron: "0 22 * * *"
 
 permissions:
   contents: read
