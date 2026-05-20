@@ -163,6 +163,58 @@ fn defaults_the_odds_api_to_five_bookmakers() {
 }
 
 #[test]
+fn parses_api_football_context_provider() {
+    let options = CliOptions::parse(
+        [
+            "--norsk-tipping-live",
+            "--date",
+            "2026-05-16",
+            "--api-football-key",
+            "test-key",
+            "--api-football-base-url",
+            "http://127.0.0.1:9",
+            "--api-football-timezone",
+            "Europe/Oslo",
+            "--api-football-max-fixtures",
+            "1",
+            "--api-football-max-form-teams",
+            "2",
+        ]
+        .into_iter()
+        .map(str::to_string),
+    )
+    .expect("valid options");
+
+    let provider = options
+        .football_data
+        .api_football
+        .expect("provider enabled");
+    assert_eq!(provider.api_key, "test-key");
+    assert_eq!(provider.base_url, "http://127.0.0.1:9");
+    assert_eq!(provider.timezone, "Europe/Oslo");
+    assert_eq!(provider.max_context_fixtures, 1);
+    assert_eq!(provider.max_form_teams, 2);
+}
+
+#[test]
+fn rejects_api_football_options_without_key() {
+    let error = CliOptions::parse(
+        [
+            "--norsk-tipping-live",
+            "--date",
+            "2026-05-16",
+            "--api-football-max-fixtures",
+            "1",
+        ]
+        .into_iter()
+        .map(str::to_string),
+    )
+    .expect_err("missing API-Football key");
+
+    assert!(error.contains("--api-football-key is required"));
+}
+
+#[test]
 fn rejects_more_than_five_odds_api_bookmakers() {
     let error = CliOptions::parse(
         [

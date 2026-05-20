@@ -3,6 +3,7 @@ mod ai;
 mod cli;
 mod domain;
 mod football_context;
+mod football_data_provider;
 mod history;
 mod history_pipeline;
 mod input;
@@ -22,6 +23,7 @@ use agents::DailyBetOrchestrator;
 use ai::run_ai_workflow;
 use cli::{CandidateSource, CliOptions};
 use domain::BettingRules;
+use football_data_provider::apply_football_data;
 use input::load_candidates_from_csv;
 use notify::deliver_report;
 use reference::apply_reference_odds;
@@ -71,6 +73,12 @@ fn main() {
     };
     timings.mark("reference_enrichment");
 
+    let football_data_result =
+        apply_football_data(candidates, &options.rules, &options.football_data);
+    candidates = football_data_result.candidates;
+    let football_data_provider_notes = football_data_result.provider_report_notes;
+    timings.mark("football_data_enrichment");
+
     let research_digest = match load_research(&options.research) {
         Ok(digest) => digest,
         Err(error) => {
@@ -102,8 +110,12 @@ fn main() {
     }
     timings.mark("history_write");
 
-    let deterministic_report =
-        render_recommendation(&options.rules, &recommendation, &reference_provider_notes);
+    let deterministic_report = render_recommendation(
+        &options.rules,
+        &recommendation,
+        &reference_provider_notes,
+        &football_data_provider_notes,
+    );
     timings.mark("report_render");
 
     let mut ai_used = false;
@@ -134,6 +146,7 @@ fn main() {
             ai_used,
             ai_fallback_reason,
             reference_provider_notes,
+            football_data_provider_notes,
         };
         if let Err(error) = write_json_report(&path, &options.rules, &recommendation, &meta) {
             eprintln!("{error}");
@@ -162,6 +175,7 @@ fn public_error(error: &str) -> String {
     error
         .replace("OPENAI_API_KEY", "OpenAI API key")
         .replace("BETTING_ODDS_API_KEY", "Odds API key")
+        .replace("BETTING_FOOTBALL_DATA_API_KEY", "Football data API key")
 }
 
 fn load_candidates(

@@ -41,7 +41,7 @@ if grep -R "apiKey=" "$REPORT_DIR" | grep -v "apiKey=<redacted>" >/dev/null; the
   exit 1
 fi
 
-if grep -R -E "OPENAI_API_KEY|BETTING_ODDS_API_KEY|sk-[A-Za-z0-9]" "$REPORT_DIR" >/dev/null; then
+if grep -R -E "OPENAI_API_KEY|BETTING_ODDS_API_KEY|BETTING_FOOTBALL_DATA_API_KEY|sk-[A-Za-z0-9]" "$REPORT_DIR" >/dev/null; then
   echo "secret-looking token or secret environment variable name found in report artifacts" >&2
   exit 1
 fi

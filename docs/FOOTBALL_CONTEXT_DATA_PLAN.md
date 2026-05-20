@@ -73,6 +73,32 @@ Fit:
 - Good for form, schedule, standings, and potentially sidelined/team-news data.
 - Needs a paid/free-trial verification run for the leagues we actually bet.
 
+## Implementation Status
+
+Status on 2026-05-20:
+
+1. Added a separate football-data provider trait in `src/football_data_provider.rs`.
+2. Added an env-gated API-Football provider behind
+   `BETTING_FOOTBALL_DATA_API_KEY`.
+3. The provider fetches same-day fixtures once and matches candidates by
+   normalized teams plus kickoff time.
+4. The provider fetches fixture injuries/suspensions for at most
+   `BETTING_API_FOOTBALL_MAX_FIXTURES` matched fixtures.
+5. The provider fetches recent team fixtures for at most
+   `BETTING_API_FOOTBALL_MAX_FORM_TEAMS` teams and turns results/rest days into
+   supplied context notes.
+6. Provider errors and request counts are shown as football-data provider notes
+   without exposing the API key.
+7. `today.json` now includes `football_data_provider_notes`.
+
+Remaining useful follow-up:
+
+- Add `/leagues` coverage checks before treating empty injury responses as
+  checked availability.
+- Add standings/table-position context for motivation.
+- Add a live manual smoke only after confirming the API-Football key and request
+  budget.
+
 ## Proposed Implementation
 
 1. Add a separate football-data provider trait, independent from reference odds:

@@ -1,0 +1,25 @@
+{
+  "get": "injuries",
+  "parameters": {
+    "fixture": "1001"
+  },
+  "errors": [],
+  "results": 1,
+  "paging": {
+    "current": 1,
+    "total": 1
+  },
+  "response": [
+    {
+      "player": {
+        "name": "Ola Striker"
+      },
+      "team": {
+        "id": 331,
+        "name": "Rosenborg"
+      },
+      "type": "Injury",
+      "reason": "Hamstring injury"
+    }
+  ]
+}

@@ -27,6 +27,8 @@ Produce a daily top-5 shortlist of bets that:
   default in the scheduled publisher.
 - Optionally enriches candidates from `reference_odds.csv` or the env-gated
   The Odds API provider before scoring.
+- Optionally enriches football context from the env-gated API-Football provider
+  before scoring.
 - Uses The Odds API `totals` only when `BETTING_ODDS_API_MARKETS` explicitly
   includes it; scheduled defaults stay on `h2h` to conserve credits.
 - Uses The Odds API `double_chance` only when `BETTING_ODDS_API_MARKETS`
@@ -35,6 +37,8 @@ Produce a daily top-5 shortlist of bets that:
   the default set is Unibet SE, Pinnacle, Betfair Exchange EU, Betsson, and
   William Hill.
 - Reports provider request and match counts without exposing `BETTING_ODDS_API_KEY`.
+- Reports API-Football request and match counts without exposing
+  `BETTING_FOOTBALL_DATA_API_KEY`.
 - Filters candidates.
 - Allows several preferred markets from the same match when the football board
   has fewer than 5 separate matches.
@@ -136,6 +140,8 @@ GitHub Actions:
 - `OPENAI_API_KEY`
 - `BETTING_ODDS_API_KEY` when GitHub Actions should enrich h2h/main-market
   football prices from The Odds API.
+- `BETTING_FOOTBALL_DATA_API_KEY` when GitHub Actions should enrich football
+  form, injury/suspension, and schedule context from API-Football.
 - `BETTING_PUSHOVER_TOKEN` and `BETTING_PUSHOVER_USER` when GitHub Actions
   should send iPhone push notifications.
 

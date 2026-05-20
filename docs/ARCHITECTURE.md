@@ -60,6 +60,24 @@ The runtime is a deterministic multi-agent pipeline coordinated by
   count, event-odds request count, returned event count, matched row count,
   matched candidate count, and bookmaker-key count without exposing the API key.
 
+`Football Data Enrichment`
+
+- Runs after reference-odds enrichment and before deterministic scoring.
+- Is disabled unless `BETTING_FOOTBALL_DATA_API_KEY` is configured.
+- Uses the API-Football provider when
+  `BETTING_FOOTBALL_DATA_PROVIDER=api_football`.
+- Fetches same-day fixtures once, then matches candidates by normalized teams and
+  kickoff time.
+- Fetches injuries by matched fixture, capped by
+  `BETTING_API_FOOTBALL_MAX_FIXTURES`.
+- Fetches recent team fixtures for form and rest-day context, capped by
+  `BETTING_API_FOOTBALL_MAX_FORM_TEAMS`.
+- Appends supplied provider context into candidate notes so the existing
+  football checklist can mark form, injuries/suspensions, and schedule/travel
+  without inventing missing data.
+- Prints provider request counts and matched-candidate counts without exposing
+  the API-Football key.
+
 ## Agents
 
 `OddsScreeningAgent`
@@ -124,10 +142,13 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Runs after generic research matching and before final selection.
 - Adds a per-candidate checklist for form, injuries/suspensions, motivation,
   schedule/travel, and market context.
-- Uses candidate notes and candidate-specific research matches only.
+- Uses candidate notes, API-Football supplied notes, and candidate-specific
+  research matches only.
 - Marks missing evidence as `unknown` instead of inventing team context.
 - Applies small visible confidence adjustments for positive or warning context,
   with warning categories capped so context cannot overpower the market.
+- Treats market-implied-only probability plus all-unknown football context as
+  fallback evidence, not as a strict recommendation.
 
 `DailySelectionAgent`
 
@@ -204,6 +225,7 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Shows whether pick history is enabled for the run.
 - Summarizes source coverage, source errors, missing football context, and
   learning status before the ranked picks.
+- Shows reference-provider and football-data-provider run summaries when enabled.
 - Keeps per-pick kickoff time, strict status, football checklist, learning note,
   research notes, and fallback warnings visible.
 - Publishes a complete JSON report beside the text report for downstream

@@ -12,6 +12,7 @@ pub fn render_recommendation(
     rules: &BettingRules,
     recommendation: &RecommendationDecision,
     reference_provider_notes: &[String],
+    football_data_provider_notes: &[String],
 ) -> String {
     let mut output = String::new();
     output.push_str("Daily betting agent recommendation\n");
@@ -28,7 +29,13 @@ pub fn render_recommendation(
     if let Some(date) = &rules.date {
         output.push_str(&format!("Date filter: {date}\n"));
     }
-    push_run_summary(&mut output, rules, recommendation, reference_provider_notes);
+    push_run_summary(
+        &mut output,
+        rules,
+        recommendation,
+        reference_provider_notes,
+        football_data_provider_notes,
+    );
     output.push('\n');
 
     match recommendation {
@@ -90,6 +97,7 @@ fn push_run_summary(
     rules: &BettingRules,
     recommendation: &RecommendationDecision,
     reference_provider_notes: &[String],
+    football_data_provider_notes: &[String],
 ) {
     let candidates = ranked_candidates(recommendation);
     output.push_str(&format!(
@@ -101,6 +109,7 @@ fn push_run_summary(
     if candidates.is_empty() {
         output.push_str("Source coverage: no ranked candidates\n");
         push_reference_provider_notes(output, reference_provider_notes);
+        push_football_data_provider_notes(output, football_data_provider_notes);
         output.push_str("Learning summary: no ranked candidates\n");
         return;
     }
@@ -114,10 +123,21 @@ fn push_run_summary(
         missing_context(&candidates)
     ));
     push_reference_provider_notes(output, reference_provider_notes);
+    push_football_data_provider_notes(output, football_data_provider_notes);
     output.push_str(&format!(
         "Learning summary: {}\n",
         learning_summary(&candidates)
     ));
+}
+
+fn push_football_data_provider_notes(output: &mut String, notes: &[String]) {
+    for (index, note) in notes.iter().take(4).enumerate() {
+        if index == 0 {
+            output.push_str(&format!("Football data provider: {note}\n"));
+        } else {
+            output.push_str(&format!("Football data provider note: {note}\n"));
+        }
+    }
 }
 
 fn push_reference_provider_notes(output: &mut String, notes: &[String]) {
@@ -210,7 +230,7 @@ fn learning_summary(candidates: &[&EvaluatedCandidate]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::push_reference_provider_notes;
+    use super::{push_football_data_provider_notes, push_reference_provider_notes};
 
     #[test]
     fn prints_reference_provider_summary_and_notes() {
@@ -225,5 +245,20 @@ mod tests {
         assert!(output.contains("Reference provider: The Odds API: sport odds requests 5/5"));
         assert!(output.contains("Reference provider note: reference odds provider"));
         assert!(!output.contains("apiKey"));
+    }
+
+    #[test]
+    fn prints_football_data_provider_summary_and_notes() {
+        let notes = vec![
+            "API-Football: fixture requests 1/1, injury requests 1/1, form team requests 2/2, matched 1/3 candidate(s)".to_string(),
+            "API-Football injury request failed for fixture 1001: HTTP 429".to_string(),
+        ];
+        let mut output = String::new();
+
+        push_football_data_provider_notes(&mut output, &notes);
+
+        assert!(output.contains("Football data provider: API-Football"));
+        assert!(output.contains("Football data provider note: API-Football injury request failed"));
+        assert!(!output.contains("key"));
     }
 }

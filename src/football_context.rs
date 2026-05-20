@@ -190,6 +190,7 @@ const CATEGORY_RULES: &[CategoryRule] = &[
         positive: &[
             "full squad",
             "no fresh injury",
+            "no listed absences",
             "clean bill",
             "key player returns",
         ],

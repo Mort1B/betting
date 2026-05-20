@@ -55,6 +55,8 @@ GitHub Actions secrets:
 - `OPENAI_API_KEY`: paid OpenAI API key for the four-agent review.
 - `BETTING_ODDS_API_KEY`: optional key for The Odds API reference-price
   enrichment.
+- `BETTING_FOOTBALL_DATA_API_KEY`: optional key for API-Football structured
+  football context enrichment.
 
 Report URL shape:
 
@@ -142,6 +144,14 @@ Live source controls:
   supplied, The Odds API prioritizes them over `regions`.
 - `BETTING_ODDS_API_EVENT_ODDS_LIMIT=2` caps event-level odds requests used for
   `double_chance`. This is a total cap per run, not per bookmaker.
+- `BETTING_FOOTBALL_DATA_API_KEY=...` enables API-Football context enrichment.
+  It matches same-day fixtures by normalized teams and kickoff time, then adds
+  bounded form, injury/suspension, and schedule/rest notes before scoring.
+- `BETTING_API_FOOTBALL_MAX_FIXTURES=2` caps matched fixtures enriched with
+  injury and context calls. `BETTING_API_FOOTBALL_MAX_FORM_TEAMS=4` caps recent
+  team-form calls. These defaults keep scheduled API usage small.
+- `BETTING_API_FOOTBALL_TIMEZONE=Europe/Oslo` controls fixture date matching.
+  `BETTING_API_FOOTBALL_BASE_URL` is only for local/mock testing.
 - `BETTING_CANDIDATE_SOURCE=csv` uses `BETTING_INPUT_CSV` instead.
 
 ## Optional Reference Odds
@@ -234,6 +244,12 @@ and lineup/rotation are intentionally left out of the checklist. Missing
 candidate-specific evidence is shown as `unknown` and does not create a
 confidence boost.
 
+When API-Football is enabled, fixture matches, injury/suspension entries, recent
+team form, and rest-day context are appended as supplied context before the
+deterministic checklist runs. A market-implied-only candidate with all football
+context still unknown is treated as fallback evidence rather than a strict
+recommendation.
+
 When previous settled history is available, the learning layer compares today's
 pick to stable football buckets such as competition, market type, odds range,
 selection type, and warning categories. It requires at least 5 similar settled
@@ -256,8 +272,9 @@ strict status, and football context checklist.
 
 The static publisher also writes `today.json` beside the text report. The JSON
 contains the complete deterministic ranked picks, the final text report, the
-deterministic text report, reference-provider notes, and whether the optional AI
-rewrite was used or fell back. The tokenized `today.html` page displays
+deterministic text report, reference-provider notes, football-data provider
+notes, and whether the optional AI rewrite was used or fell back. The tokenized
+`today.html` page displays
 `today.txt` in a wrapping text view and links directly to the JSON fallback.
 The publisher validates `today.json` before completing, including ranked-pick
 heading completeness and secret redaction checks.
