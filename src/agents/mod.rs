@@ -3,9 +3,14 @@ mod learning;
 mod probability;
 mod risk;
 mod selector;
+#[cfg(test)]
+mod tests;
 mod value;
 
-use crate::domain::{BetCandidate, BettingRules, EvaluatedCandidate, RecommendationDecision};
+use crate::domain::{
+    BetCandidate, BettingRules, EvaluatedCandidate, FootballContextAssessment,
+    FootballContextStatus, ProbabilityAssessment, RecommendationDecision, RiskAssessment,
+};
 use crate::football_context::assess_football_context;
 use crate::research::{ResearchDigest, assess_candidate_research};
 
@@ -109,6 +114,7 @@ impl DailyBetOrchestrator {
                     "{football_warning_count} football context warning(s)"
                 ));
             }
+            apply_missing_context_risk(&probability, &football_context, &mut risk);
             let learning = self.learning_agent.assess(&candidate, &football_context);
             if learning.confidence_adjustment != 0.0 {
                 risk.confidence =
@@ -147,179 +153,43 @@ impl DailyBetOrchestrator {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn candidate(
-        id: &str,
-        odds: f64,
-        probability: Option<f64>,
-        confidence: Option<f64>,
-    ) -> BetCandidate {
-        BetCandidate {
-            id: id.to_string(),
-            sport: "Football".to_string(),
-            competition: "Eliteserien".to_string(),
-            event: "Rosenborg - Brann".to_string(),
-            market: "Double chance".to_string(),
-            selection: "Rosenborg or draw".to_string(),
-            norsk_tipping_odds: odds,
-            model_probability: probability,
-            reference_odds: None,
-            confidence,
-            starts_at: "2026-05-15T18:00:00+02:00".to_string(),
-            notes: "strong form".to_string(),
-        }
+fn apply_missing_context_risk(
+    probability: &ProbabilityAssessment,
+    football_context: &FootballContextAssessment,
+    risk: &mut RiskAssessment,
+) {
+    if !all_context_unknown(football_context) {
+        return;
     }
 
-    #[test]
-    fn recommends_best_candidate_inside_daily_rules() {
-        let rules = BettingRules {
-            date: Some("2026-05-15".to_string()),
-            ..BettingRules::default()
-        };
-        let recommendation = DailyBetOrchestrator::new(rules).recommend(
-            vec![
-                candidate("weak", 1.22, Some(0.805), Some(0.72)),
-                candidate("best", 1.27, Some(0.885), Some(0.80)),
-                candidate("solid", 1.18, Some(0.870), Some(0.74)),
-                candidate("third", 1.20, Some(0.860), Some(0.72)),
-                candidate("fourth", 1.19, Some(0.860), Some(0.72)),
-                candidate("fifth", 1.21, Some(0.860), Some(0.72)),
-            ],
-            None,
+    risk.flags
+        .push("missing football context evidence".to_string());
+    risk.notes
+        .push("all football context checklist items are unknown".to_string());
+    risk.confidence = (risk.confidence - 0.08).clamp(0.0, 1.0);
+
+    if uses_norsk_tipping_implied_only(probability) {
+        risk.flags
+            .push("market-implied probability lacks independent or context evidence".to_string());
+        risk.notes.push(
+            "estimated probability equals Norsk Tipping implied probability; strict recommendation requires more context"
+                .to_string(),
         );
-
-        match recommendation {
-            RecommendationDecision::Bet {
-                selected,
-                alternatives,
-            } => {
-                assert_eq!(selected.candidate.id, "best");
-                assert!(selected.is_bettable());
-                assert_eq!(alternatives.len(), 4);
-            }
-            RecommendationDecision::BestAvailable { reason, .. } => {
-                panic!("expected strict bet, got fallback candidates: {reason}")
-            }
-            RecommendationDecision::NoBet { reason, .. } => panic!("expected bet, got {reason}"),
-        }
+        risk.confidence = (risk.confidence - 0.15).clamp(0.0, 1.0);
     }
+}
 
-    #[test]
-    fn accepts_market_implied_probability_when_confidence_is_strong() {
-        let recommendation = DailyBetOrchestrator::new(BettingRules::default())
-            .recommend(vec![candidate("unsupported", 1.21, None, Some(0.85))], None);
+fn all_context_unknown(football_context: &FootballContextAssessment) -> bool {
+    football_context
+        .categories
+        .iter()
+        .all(|category| category.status == FootballContextStatus::Unknown)
+}
 
-        match recommendation {
-            RecommendationDecision::Bet { selected, .. } => {
-                assert_eq!(selected.candidate.id, "unsupported");
-                assert!(selected.is_bettable());
-                assert!(
-                    selected
-                        .probability
-                        .sources
-                        .contains(&"norsk_tipping_market_implied".to_string())
-                );
-            }
-            RecommendationDecision::BestAvailable { reason, .. } => {
-                panic!("strong market-implied candidate should be selectable: {reason}")
-            }
-            RecommendationDecision::NoBet { reason, .. } => {
-                panic!("expected candidate, got no bet: {reason}")
-            }
-        }
-    }
-
-    #[test]
-    fn returns_no_bet_when_no_viable_candidates_exist() {
-        let rules = BettingRules {
-            date: Some("2026-05-19".to_string()),
-            ..BettingRules::default()
-        };
-        let recommendation = DailyBetOrchestrator::new(rules).recommend(Vec::new(), None);
-
-        match recommendation {
-            RecommendationDecision::NoBet { reason, reviewed } => {
-                assert_eq!(reason, "no viable candidates were supplied for 2026-05-19");
-                assert!(reviewed.is_empty());
-            }
-            RecommendationDecision::Bet { .. } => panic!("empty slate should not be a bet"),
-            RecommendationDecision::BestAvailable { reason, .. } => {
-                panic!("empty slate should not show fallback candidates: {reason}")
-            }
-        }
-    }
-
-    #[test]
-    fn fills_top_five_from_best_available_when_date_has_no_matches() {
-        let rules = BettingRules {
-            date: Some("2026-05-16".to_string()),
-            ..BettingRules::default()
-        };
-        let recommendation = DailyBetOrchestrator::new(rules).recommend(
-            vec![
-                candidate("one", 1.22, Some(0.805), Some(0.72)),
-                candidate("two", 1.27, Some(0.835), Some(0.78)),
-                candidate("three", 1.18, Some(0.870), Some(0.74)),
-                candidate("four", 1.19, Some(0.860), Some(0.74)),
-                candidate("five", 1.20, Some(0.860), Some(0.74)),
-                candidate("outside", 1.34, Some(0.900), Some(0.90)),
-            ],
-            None,
-        );
-
-        match recommendation {
-            RecommendationDecision::BestAvailable { picks, reason } => {
-                assert_eq!(picks.len(), 5);
-                assert!(
-                    picks
-                        .iter()
-                        .all(|pick| pick.candidate.norsk_tipping_odds <= 1.30)
-                );
-                assert!(reason.contains("no candidate passed every strict gate"));
-                assert!(picks.iter().all(|pick| {
-                    pick.rejection_reasons
-                        .iter()
-                        .any(|reason| reason.contains("no candidate matched requested date"))
-                }));
-            }
-            RecommendationDecision::Bet { .. } => panic!("date fallback should not be strict bet"),
-            RecommendationDecision::NoBet { reason, .. } => {
-                panic!("expected top 5 fallback candidates, got no bet: {reason}")
-            }
-        }
-    }
-
-    #[test]
-    fn keeps_slack_odds_as_fallback_and_excludes_hard_ceiling() {
-        let recommendation = DailyBetOrchestrator::new(BettingRules::default()).recommend(
-            vec![
-                candidate("strict", 1.22, Some(0.850), Some(0.78)),
-                candidate("slack", 1.34, Some(0.850), Some(0.78)),
-                candidate("too-high", 1.36, Some(0.900), Some(0.90)),
-            ],
-            None,
-        );
-
-        match recommendation {
-            RecommendationDecision::BestAvailable { picks, .. } => {
-                assert_eq!(picks.len(), 2);
-                assert!(picks.iter().any(|pick| pick.candidate.id == "strict"));
-                assert!(picks.iter().any(|pick| {
-                    pick.candidate.id == "slack"
-                        && pick
-                            .rejection_reasons
-                            .iter()
-                            .any(|reason| reason.contains("slack fallback only"))
-                }));
-                assert!(!picks.iter().any(|pick| pick.candidate.id == "too-high"));
-            }
-            RecommendationDecision::Bet { .. } => panic!("slack candidate should force fallback"),
-            RecommendationDecision::NoBet { reason, .. } => {
-                panic!("expected ranked candidates, got no bet: {reason}")
-            }
-        }
-    }
+fn uses_norsk_tipping_implied_only(probability: &ProbabilityAssessment) -> bool {
+    probability
+        .sources
+        .iter()
+        .any(|source| source == "norsk_tipping_market_implied")
+        && (probability.estimated_probability - probability.implied_probability).abs() < 0.0001
 }

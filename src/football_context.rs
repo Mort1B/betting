@@ -237,6 +237,7 @@ const CATEGORY_RULES: &[CategoryRule] = &[
             "good price",
             "market support",
             "odds shortening",
+            "market agreement tight",
         ],
         warning: &[
             "odds drifting",
@@ -245,6 +246,8 @@ const CATEGORY_RULES: &[CategoryRule] = &[
             "avoid",
             "price too short",
             "no bet",
+            "market disagreement high",
+            "single reference source",
         ],
     },
 ];
@@ -321,6 +324,18 @@ mod tests {
                 .iter()
                 .any(|category| category.status == FootballContextStatus::Positive)
         );
+    }
+
+    #[test]
+    fn uses_reference_market_notes_for_market_context() {
+        let assessment = assess_football_context(&candidate("market agreement tight"), None);
+        let market = assessment
+            .categories
+            .iter()
+            .find(|category| category.name == "Market context")
+            .expect("market context category");
+
+        assert_eq!(market.status, FootballContextStatus::Positive);
     }
 
     fn candidate(notes: &str) -> BetCandidate {

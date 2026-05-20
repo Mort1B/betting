@@ -157,3 +157,15 @@ Status on 2026-05-20:
 5. Validate static report artifacts before publishing so partial JSON/text or
    unredacted secret-looking values fail the workflow.
 6. Document `today.json` as the preferred iPhone Shortcut input.
+
+## Follow-Up Context Data Plan
+
+The next gap is structured candidate-specific context. Broad football pages can
+be fetched successfully while still leaving form, injuries/suspensions,
+schedule/travel, and market context unknown for the actual Norsk Tipping match.
+
+See `docs/FOOTBALL_CONTEXT_DATA_PLAN.md` for the source decision and
+implementation plan. Short version: keep The Odds API for market context, treat
+Flashscore as a future manual/sidecar option rather than the scheduled default,
+and verify API-Football first for structured form, schedule, standings, and
+injury/suspension context.
