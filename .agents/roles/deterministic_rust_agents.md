@@ -46,12 +46,16 @@ Files: `src/football_data_provider.rs`, `src/football_data_provider/`
   configured.
 - Uses API-Football to match same-day fixtures by normalized teams and kickoff
   time.
-- Adds bounded injury/suspension, recent form, and rest-day notes to candidates.
+- Checks league-season coverage before treating empty injury/suspension
+  responses as clean availability.
+- Adds bounded injury/suspension, recent form, standings motivation, and
+  rest-day notes to candidates.
 - Caps matched fixture and team-form requests with
   `BETTING_API_FOOTBALL_MAX_FIXTURES` and
   `BETTING_API_FOOTBALL_MAX_FORM_TEAMS`.
 - Reports provider request and match counts without exposing the API key.
-- Does not invent clean team news when the provider returns no usable match.
+- Does not invent clean team news or motivation when the provider returns no
+  usable match or no coverage.
 
 ## ValueAgent
 

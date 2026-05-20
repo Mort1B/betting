@@ -29,6 +29,10 @@ Produce a daily top-5 shortlist of bets that:
   The Odds API provider before scoring.
 - Optionally enriches football context from the env-gated API-Football provider
   before scoring.
+- Checks API-Football league-season coverage before treating empty
+  injury/suspension responses as checked availability.
+- Uses API-Football standings/table position only as supplied motivation
+  context; missing coverage remains missing context.
 - Uses The Odds API `totals` only when `BETTING_ODDS_API_MARKETS` explicitly
   includes it; scheduled defaults stay on `h2h` to conserve credits.
 - Uses The Odds API `double_chance` only when `BETTING_ODDS_API_MARKETS`
@@ -141,7 +145,8 @@ GitHub Actions:
 - `BETTING_ODDS_API_KEY` when GitHub Actions should enrich h2h/main-market
   football prices from The Odds API.
 - `BETTING_FOOTBALL_DATA_API_KEY` when GitHub Actions should enrich football
-  form, injury/suspension, and schedule context from API-Football.
+  form, injury/suspension, schedule, and standings motivation context from
+  API-Football.
 - `BETTING_PUSHOVER_TOKEN` and `BETTING_PUSHOVER_USER` when GitHub Actions
   should send iPhone push notifications.
 

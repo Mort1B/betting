@@ -83,19 +83,23 @@ Status on 2026-05-20:
 3. The provider fetches same-day fixtures once and matches candidates by
    normalized teams plus kickoff time.
 4. The provider fetches fixture injuries/suspensions for at most
-   `BETTING_API_FOOTBALL_MAX_FIXTURES` matched fixtures.
-5. The provider fetches recent team fixtures for at most
+   `BETTING_API_FOOTBALL_MAX_FIXTURES` matched fixtures, but only after
+   `/leagues` confirms injury coverage for that league-season.
+5. The provider checks `/leagues` coverage by league-season and reports
+   unavailable or unconfirmed coverage without turning it into positive
+   context.
+6. The provider fetches `/standings` once per covered league-season and adds
+   motivation notes for clear title-race, European/promotion, or relegation
+   table positions.
+7. The provider fetches recent team fixtures for at most
    `BETTING_API_FOOTBALL_MAX_FORM_TEAMS` teams and turns results/rest days into
    supplied context notes.
-6. Provider errors and request counts are shown as football-data provider notes
+8. Provider errors and request counts are shown as football-data provider notes
    without exposing the API key.
-7. `today.json` now includes `football_data_provider_notes`.
+9. `today.json` now includes `football_data_provider_notes`.
 
 Remaining useful follow-up:
 
-- Add `/leagues` coverage checks before treating empty injury responses as
-  checked availability.
-- Add standings/table-position context for motivation.
 - Add a live manual smoke only after confirming the API-Football key and request
   budget.
 

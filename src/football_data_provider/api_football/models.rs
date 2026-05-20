@@ -54,7 +54,11 @@ pub(super) struct FixtureInfo {
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub(super) struct LeagueInfo {
+    #[serde(default)]
+    pub(super) id: Option<u64>,
     pub(super) name: String,
+    #[serde(default)]
+    pub(super) season: Option<u16>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -88,4 +92,60 @@ pub(super) struct ApiInjury {
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub(super) struct InjuryPlayer {
     pub(super) name: String,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub(super) struct ApiLeagueCoverageResponse {
+    pub(super) league: ApiLeagueIdentity,
+    #[serde(default)]
+    pub(super) seasons: Vec<ApiLeagueSeason>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub(super) struct ApiLeagueIdentity {
+    pub(super) id: u64,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub(super) struct ApiLeagueSeason {
+    pub(super) year: u16,
+    #[serde(default)]
+    pub(super) coverage: ApiLeagueCoverage,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
+pub(super) struct ApiLeagueCoverage {
+    #[serde(default)]
+    pub(super) standings: Option<bool>,
+    #[serde(default)]
+    pub(super) injuries: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub(super) struct ApiStandingResponse {
+    pub(super) league: ApiStandingLeague,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub(super) struct ApiStandingLeague {
+    #[serde(default)]
+    pub(super) standings: Vec<Vec<ApiStandingRow>>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub(super) struct ApiStandingRow {
+    pub(super) rank: u16,
+    pub(super) team: TeamInfo,
+    #[serde(default)]
+    pub(super) points: Option<i32>,
+    #[serde(default, rename = "goalsDiff")]
+    pub(super) goals_diff: Option<i32>,
+    #[serde(default)]
+    pub(super) group: Option<String>,
+    #[serde(default)]
+    pub(super) form: Option<String>,
+    #[serde(default)]
+    pub(super) status: Option<String>,
+    #[serde(default)]
+    pub(super) description: Option<String>,
 }

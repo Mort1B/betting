@@ -68,13 +68,17 @@ The runtime is a deterministic multi-agent pipeline coordinated by
   `BETTING_FOOTBALL_DATA_PROVIDER=api_football`.
 - Fetches same-day fixtures once, then matches candidates by normalized teams and
   kickoff time.
-- Fetches injuries by matched fixture, capped by
-  `BETTING_API_FOOTBALL_MAX_FIXTURES`.
+- Checks `/leagues` coverage by league-season before spending downstream
+  context calls.
+- Fetches injuries by matched fixture only when injury coverage is confirmed,
+  capped by `BETTING_API_FOOTBALL_MAX_FIXTURES`.
+- Fetches standings once per covered league-season and turns clear title-race,
+  Europe/promotion, or relegation positions into supplied motivation notes.
 - Fetches recent team fixtures for form and rest-day context, capped by
   `BETTING_API_FOOTBALL_MAX_FORM_TEAMS`.
 - Appends supplied provider context into candidate notes so the existing
-  football checklist can mark form, injuries/suspensions, and schedule/travel
-  without inventing missing data.
+  football checklist can mark form, injuries/suspensions, motivation, and
+  schedule/travel without inventing missing data.
 - Prints provider request counts and matched-candidate counts without exposing
   the API-Football key.
 

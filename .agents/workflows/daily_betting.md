@@ -32,10 +32,12 @@ comparison signals.
      final bet price.
 
 3. `Football Data Enrichment`
-   - Optionally applies API-Football fixture, injury/suspension, recent form, and
-     rest-day context when `BETTING_FOOTBALL_DATA_API_KEY` is configured.
+   - Optionally applies API-Football fixture, coverage, injury/suspension,
+     recent form, standings motivation, and rest-day context when
+     `BETTING_FOOTBALL_DATA_API_KEY` is configured.
    - Caps matched fixture and team-form requests to keep scheduled API usage
      bounded.
+   - Treats unavailable coverage as missing context, not as positive evidence.
    - Adds supplied context into candidate notes before the football checklist is
      assessed.
 

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::domain::BetCandidate;
 use crate::football_data_provider::append_candidate_note;
 
-use super::models::{ApiFixture, ApiInjury};
+use super::models::{ApiFixture, ApiInjury, ApiStandingRow};
 use super::time::iso_to_utc_minutes;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,6 +79,24 @@ pub(super) fn append_injury_notes(
     append_candidate_note(candidate, format!("API-Football injuries: {summary}"));
 }
 
+pub(super) fn append_availability_coverage_note(
+    candidate: &mut BetCandidate,
+    fixture: &ApiFixture,
+    status: &str,
+) {
+    append_candidate_note(
+        candidate,
+        format!(
+            "API-Football availability coverage {status} for {} {}",
+            fixture.league.name,
+            fixture
+                .league
+                .season
+                .map_or_else(|| "unknown season".to_string(), |season| season.to_string())
+        ),
+    );
+}
+
 pub(super) fn append_form_notes(
     candidate: &mut BetCandidate,
     fixture: &ApiFixture,
@@ -94,6 +112,36 @@ pub(super) fn append_form_notes(
     }
 }
 
+pub(super) fn append_standings_notes(
+    candidate: &mut BetCandidate,
+    fixture: &ApiFixture,
+    standings: &[ApiStandingRow],
+) {
+    for team in [&fixture.teams.home, &fixture.teams.away] {
+        if let Some(note) = standings_note(team.id, &team.name, standings) {
+            append_candidate_note(candidate, note);
+        }
+    }
+}
+
+pub(super) fn append_standings_coverage_note(
+    candidate: &mut BetCandidate,
+    fixture: &ApiFixture,
+    status: &str,
+) {
+    append_candidate_note(
+        candidate,
+        format!(
+            "API-Football table coverage {status} for {} {}",
+            fixture.league.name,
+            fixture
+                .league
+                .season
+                .map_or_else(|| "unknown season".to_string(), |season| season.to_string())
+        ),
+    );
+}
+
 fn fixture_matches_candidate(candidate: &BetCandidate, fixture: &ApiFixture) -> bool {
     let event = normalize_name(&candidate.event);
     let home = normalize_name(&fixture.teams.home.name);
@@ -101,6 +149,64 @@ fn fixture_matches_candidate(candidate: &BetCandidate, fixture: &ApiFixture) -> 
     event.contains(&home)
         && event.contains(&away)
         && kickoff_distance(candidate, fixture).is_none_or(|minutes| minutes <= 180)
+}
+
+fn standings_note(team_id: u64, team_name: &str, standings: &[ApiStandingRow]) -> Option<String> {
+    let total = standings.len();
+    let row = standings.iter().find(|row| row.team.id == team_id)?;
+    let mut drivers = Vec::new();
+    if row.rank <= 2 {
+        drivers.push("title race");
+    }
+    if total >= 6 && usize::from(row.rank) >= total.saturating_sub(2) {
+        drivers.push("relegation battle");
+    }
+
+    let description = row.description.as_deref().unwrap_or_default();
+    let description_lower = description.to_lowercase();
+    if description_lower.contains("champions league")
+        || description_lower.contains("conference league")
+        || description_lower.contains("europa")
+    {
+        drivers.push("europe place");
+    } else if description_lower.contains("promotion") {
+        drivers.push("promotion path");
+    }
+    if description_lower.contains("relegation") && !drivers.contains(&"relegation battle") {
+        drivers.push("relegation battle");
+    }
+
+    if drivers.is_empty() {
+        return None;
+    }
+
+    let points = row.points.map_or_else(
+        || "points n/a".to_string(),
+        |points| format!("{points} pts"),
+    );
+    let goal_diff = row
+        .goals_diff
+        .map_or_else(String::new, |diff| format!(", goal difference {diff:+}"));
+    let form = row
+        .form
+        .as_deref()
+        .filter(|form| !form.trim().is_empty())
+        .map_or_else(String::new, |form| format!(", table form {form}"));
+    let status = row
+        .status
+        .as_deref()
+        .filter(|status| !status.trim().is_empty() && *status != "same")
+        .map_or_else(String::new, |status| format!(", table status {status}"));
+    let group = row
+        .group
+        .as_deref()
+        .filter(|group| !group.trim().is_empty())
+        .map_or_else(String::new, |group| format!(" ({group})"));
+    Some(format!(
+        "API-Football motivation: {team_name}{group} {}; rank {}/{total}, {points}{goal_diff}{form}{status}",
+        drivers.join(" and "),
+        row.rank
+    ))
 }
 
 fn kickoff_distance(candidate: &BetCandidate, fixture: &ApiFixture) -> Option<i64> {

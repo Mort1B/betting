@@ -26,6 +26,8 @@ price, and context evidence for each top candidate.
 - Identify important context: kickoff time, form, injuries/suspensions,
   motivation, schedule/travel, market type, market context, research support,
   and warnings.
+- Treat API-Football coverage-unavailable or coverage-not-confirmed notes as
+  missing context, not evidence that a team is safe.
 - Highlight missing or unknown context data without turning it into evidence.
 - Summarize the learning note without overstating small or insufficient history
   samples.

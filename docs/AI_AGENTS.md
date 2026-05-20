@@ -23,6 +23,8 @@ This is intentionally optimized:
   research matches.
 - Checks kickoff time and the football context checklist for form,
   injuries/suspensions, motivation, schedule/travel, and market context.
+- Treats provider coverage-unavailable or coverage-not-confirmed notes as
+  unresolved context, not as clean team news or clear motivation.
 - Checks the learning note and treats no-history or insufficient-history output
   as a gap, not as support.
 - Calls out missing comparison data.
@@ -44,6 +46,7 @@ This is intentionally optimized:
   supports it.
 - Preserves fallback warnings and questions unresolved injuries/suspensions,
   motivation, schedule/travel, market context, or learning support.
+- Does not convert API-Football missing coverage into positive evidence.
 - Never treats a bet as guaranteed.
 
 `Output Writer`
@@ -54,8 +57,8 @@ This is intentionally optimized:
   learning note, strict-rule status, and confidence score out of 100.
 - Preserves fallback warnings when the deterministic report had to fill the top
   5 from best available candidates.
-- Does not claim form, injury, motivation, schedule, market, or history facts unless they
-  are present in the deterministic report or prior agent output.
+- Does not claim form, injury, motivation, schedule, market, or history facts
+  unless they are present in the deterministic report or prior agent output.
 
 ## Model
 

@@ -145,8 +145,9 @@ Live source controls:
 - `BETTING_ODDS_API_EVENT_ODDS_LIMIT=2` caps event-level odds requests used for
   `double_chance`. This is a total cap per run, not per bookmaker.
 - `BETTING_FOOTBALL_DATA_API_KEY=...` enables API-Football context enrichment.
-  It matches same-day fixtures by normalized teams and kickoff time, then adds
-  bounded form, injury/suspension, and schedule/rest notes before scoring.
+  It matches same-day fixtures by normalized teams and kickoff time, checks
+  league-season coverage, then adds bounded form, injury/suspension,
+  schedule/rest, and standings motivation notes before scoring.
 - `BETTING_API_FOOTBALL_MAX_FIXTURES=2` caps matched fixtures enriched with
   injury and context calls. `BETTING_API_FOOTBALL_MAX_FORM_TEAMS=4` caps recent
   team-form calls. These defaults keep scheduled API usage small.
@@ -244,9 +245,12 @@ and lineup/rotation are intentionally left out of the checklist. Missing
 candidate-specific evidence is shown as `unknown` and does not create a
 confidence boost.
 
-When API-Football is enabled, fixture matches, injury/suspension entries, recent
-team form, and rest-day context are appended as supplied context before the
-deterministic checklist runs. A market-implied-only candidate with all football
+When API-Football is enabled, fixture matches, confirmed injury/suspension
+entries, recent team form, rest-day context, and clear standings motivation are
+appended as supplied context before the deterministic checklist runs. Empty
+injury responses count as clean availability only when `/leagues` confirms
+injury coverage for that league-season; missing coverage stays visible but does
+not create a confidence boost. A market-implied-only candidate with all football
 context still unknown is treated as fallback evidence rather than a strict
 recommendation.
 
