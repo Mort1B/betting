@@ -58,7 +58,14 @@ The workflow is optimized to reduce API cost:
 - deterministic Rust filtering happens before the model calls,
 - only the compact top-5 report is passed to the agents,
 - there are four narrow role calls,
-- each call has `max_output_tokens` capped by the Rust default.
+- each call has `max_output_tokens` capped by the Rust default,
+- the scheduled publisher can override that cap with
+  `BETTING_AI_MAX_OUTPUT_TOKENS`.
+
+The default cap is large enough for the Output Writer to include all five
+ranked candidates. If the OpenAI response is incomplete or misses ranked
+candidate headings, the publisher uses the deterministic report instead of a
+partial AI report.
 
 ## References
 

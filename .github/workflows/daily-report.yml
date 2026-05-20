@@ -67,12 +67,16 @@ jobs:
           BETTING_MAX_ODDS: "1.30"
           BETTING_NT_EVENTS_PER_SPORT: "35"
           BETTING_RESEARCH_SOURCES: ${{ github.workspace }}/examples/football_research_sources.txt
+          BETTING_ODDS_API_KEY: ${{ secrets.BETTING_ODDS_API_KEY }}
+          BETTING_ODDS_API_BOOKMAKERS: unibet_se,pinnacle,betfair_ex_eu,betsson,williamhill
+          BETTING_ODDS_API_EVENT_ODDS_LIMIT: "2"
           BETTING_REPORT_TOKEN: ${{ secrets.BETTING_REPORT_TOKEN }}
           BETTING_DELIVERY: ${{ secrets.BETTING_PUSHOVER_TOKEN != '' && secrets.BETTING_PUSHOVER_USER != '' && 'pushover' || 'none' }}
           BETTING_PUSHOVER_TOKEN: ${{ secrets.BETTING_PUSHOVER_TOKEN }}
           BETTING_PUSHOVER_USER: ${{ secrets.BETTING_PUSHOVER_USER }}
           BETTING_ENABLE_AI: "true"
           BETTING_OPENAI_MODEL: gpt-5.5
+          BETTING_AI_MAX_OUTPUT_TOKENS: "3500"
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: scripts/publish_static_report.sh
 

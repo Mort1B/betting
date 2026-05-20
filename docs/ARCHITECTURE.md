@@ -35,12 +35,30 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 
 - Runs after candidate loading and before deterministic agents.
 - Reads an optional `--reference-odds` CSV.
+- Can also read h2h/main-market football prices from the env-gated The Odds API
+  provider when `BETTING_ODDS_API_KEY` is configured.
+- Can read over/under totals from The Odds API only when
+  `BETTING_ODDS_API_MARKETS` explicitly includes `totals`.
+- Can read double-chance prices only when `BETTING_ODDS_API_MARKETS` explicitly
+  includes `double_chance`; this uses event-level odds requests capped by
+  `BETTING_ODDS_API_EVENT_ODDS_LIMIT`.
+- Uses explicit bookmaker keys by default:
+  `unibet_se,pinnacle,betfair_ex_eu,betsson,williamhill`.
+- Rejects `--odds-api-bookmakers` overrides with more than 5 keys.
 - Matches by exact `candidate_id`, or by normalized `event`, `market`, and
   `selection` with optional `sport` and `competition` constraints.
+- The provider pre-matches API events by normalized teams, kickoff time, market
+  shape, selection, totals point, and double-chance legs before writing
+  in-memory reference rows.
 - Converts multiple matched external prices into a consensus market-implied
   probability before setting `reference_odds`.
 - Does not overwrite `reference_odds` already present in the main candidate
   CSV.
+- Provider errors and no-match outcomes are carried as notes so the daily report
+  stays available when the paid API is missing or unavailable.
+- The report run summary prints sport-odds request count, event-list request
+  count, event-odds request count, returned event count, matched row count,
+  matched candidate count, and bookmaker-key count without exposing the API key.
 
 ## Agents
 
@@ -176,6 +194,9 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Passes compact outputs between agents to reduce cost and keep each role
   focused.
 - Produces the final user-facing report through the optional `--ai` path.
+- Rejects incomplete AI responses or final AI output that omits ranked candidate
+  headings, then falls back to the deterministic report instead of publishing a
+  partial report.
 
 `Report Renderer`
 
@@ -185,6 +206,10 @@ The runtime is a deterministic multi-agent pipeline coordinated by
   learning status before the ranked picks.
 - Keeps per-pick kickoff time, strict status, football checklist, learning note,
   research notes, and fallback warnings visible.
+- Publishes a complete JSON report beside the text report for downstream
+  parsing and as a fallback when prose display is inconvenient.
+- Validates static report artifacts before Pages upload so missing ranked picks
+  or unredacted secret-looking values fail the workflow.
 
 ## Probability And Context
 
@@ -215,8 +240,8 @@ cargo run -- --norsk-tipping-live --date YYYY-MM-DD --sport-scope football --res
 
 5. Configure `OPENAI_API_KEY` in GitHub Secrets so the scheduled workflow can run
    the four-agent API review. See `docs/OPENAI_API_SETUP.md`.
-6. Publish `today.txt`, the dated report, and the merged `history.jsonl` file to
-   the tokenized GitHub Pages path.
+6. Publish `today.html`, `today.txt`, `today.json`, dated text/JSON reports, and
+   the merged `history.jsonl` file to the tokenized GitHub Pages path.
 7. Optionally apply `BETTING_SETTLEMENTS_JSONL` to update prior pending history
    rows from checked final results.
 8. Treat fallback candidates as weaker options and place no bet if the report

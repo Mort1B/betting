@@ -3,6 +3,7 @@ use crate::domain::{BettingRules, SportScope};
 use crate::norsk_tipping::LiveOddsOptions;
 use crate::notify::DeliveryOptions;
 use crate::reference::ReferenceOddsOptions;
+use crate::reference_provider::{MAX_BOOKMAKERS, TheOddsApiOptions};
 use crate::research::ResearchOptions;
 
 #[derive(Debug)]
@@ -29,6 +30,7 @@ impl CliOptions {
         let mut rules = BettingRules::default();
         let mut research = ResearchOptions::default();
         let mut reference_odds = ReferenceOddsOptions::default();
+        let mut odds_api_options: Option<TheOddsApiOptions> = None;
         let mut delivery = DeliveryOptions::default();
         let mut ai = AiOptions::default();
         let mut input_path = None;
@@ -68,6 +70,42 @@ impl CliOptions {
                 "--reference-odds" => {
                     reference_odds.source_path = Some(next_value(&mut args, "--reference-odds")?);
                 }
+                "--odds-api-key" => {
+                    odds_api_settings(&mut odds_api_options).api_key =
+                        next_value(&mut args, "--odds-api-key")?;
+                }
+                "--odds-api-sports" => {
+                    odds_api_settings(&mut odds_api_options).sport_keys =
+                        parse_list(&next_value(&mut args, "--odds-api-sports")?);
+                }
+                "--odds-api-regions" => {
+                    odds_api_settings(&mut odds_api_options).regions =
+                        next_value(&mut args, "--odds-api-regions")?;
+                }
+                "--odds-api-markets" => {
+                    odds_api_settings(&mut odds_api_options).markets =
+                        next_value(&mut args, "--odds-api-markets")?;
+                }
+                "--odds-api-bookmakers" => {
+                    odds_api_settings(&mut odds_api_options).bookmakers =
+                        Some(next_value(&mut args, "--odds-api-bookmakers")?);
+                }
+                "--odds-api-base-url" => {
+                    odds_api_settings(&mut odds_api_options).base_url =
+                        next_value(&mut args, "--odds-api-base-url")?;
+                }
+                "--odds-api-commence-from" => {
+                    odds_api_settings(&mut odds_api_options).commence_time_from =
+                        Some(next_value(&mut args, "--odds-api-commence-from")?);
+                }
+                "--odds-api-commence-to" => {
+                    odds_api_settings(&mut odds_api_options).commence_time_to =
+                        Some(next_value(&mut args, "--odds-api-commence-to")?);
+                }
+                "--odds-api-event-odds-limit" => {
+                    odds_api_settings(&mut odds_api_options).event_odds_limit =
+                        parse_usize(&mut args, "--odds-api-event-odds-limit")?;
+                }
                 "--max-research-pages" => {
                     research.max_pages = parse_usize(&mut args, "--max-research-pages")?;
                 }
@@ -94,6 +132,13 @@ impl CliOptions {
         rules.validate()?;
         if live_options.events_per_sport == 0 {
             return Err("--nt-events-per-sport must be greater than 0".to_string());
+        }
+        if let Some(odds_api) = odds_api_options {
+            if odds_api.api_key.trim().is_empty() {
+                return Err("--odds-api-key is required when odds API options are set".to_string());
+            }
+            validate_bookmaker_limit(odds_api.bookmakers.as_deref())?;
+            reference_odds.providers.the_odds_api = Some(odds_api);
         }
         let source = if use_norsk_tipping_live {
             if rules.date.is_none() {
@@ -135,6 +180,11 @@ impl CliOptions {
            --pick-count N             default 5\n\
            --research PATH            research source file, name|kind|url\n\
            --reference-odds PATH      optional external reference odds CSV\n\
+           --odds-api-key KEY         enable The Odds API reference price provider\n\
+           --odds-api-sports LIST     comma-separated The Odds API sport keys\n\
+           --odds-api-regions LIST    provider regions, default eu\n\
+           --odds-api-bookmakers LIST provider bookmaker keys, max 5\n\
+           --odds-api-event-odds-limit N max event-level odds calls, default 2\n\
            --max-research-pages N     default 10\n\
            --max-research-items N     default 10 for listing sources\n\
            --send-email               send report through SMTP env vars\n\
@@ -142,7 +192,7 @@ impl CliOptions {
            --subject TEXT             notification subject\n\
            --ai                       run the 4-agent OpenAI workflow\n\
            --openai-model MODEL       default gpt-5.5\n\
-           --ai-max-output-tokens N   default 900 per agent"
+           --ai-max-output-tokens N   default 3500 per agent"
     }
 }
 
@@ -181,105 +231,27 @@ where
         .map_err(|_| format!("{flag} requires a positive integer, got {raw}"))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parses_csv_source_by_default() {
-        let options = CliOptions::parse(
-            [
-                "examples/norsk_tipping_candidates.csv",
-                "--date",
-                "2026-05-16",
-            ]
-            .into_iter()
-            .map(str::to_string),
-        )
-        .expect("valid options");
-
-        match options.source {
-            CandidateSource::Csv(path) => assert_eq!(path, "examples/norsk_tipping_candidates.csv"),
-            CandidateSource::NorskTippingLive(_) => panic!("expected CSV source"),
-        }
-        assert_eq!(options.rules.date.as_deref(), Some("2026-05-16"));
-    }
-
-    #[test]
-    fn parses_norsk_tipping_live_source() {
-        let options = CliOptions::parse(
-            [
-                "--norsk-tipping-live",
-                "--date",
-                "2026-05-16",
-                "--nt-events-per-sport",
-                "50",
-                "--pick-count",
-                "7",
-            ]
-            .into_iter()
-            .map(str::to_string),
-        )
-        .expect("valid options");
-
-        match options.source {
-            CandidateSource::NorskTippingLive(live) => {
-                assert_eq!(live.events_per_sport, 50);
-                assert!(live.earliest_start.is_none());
-            }
-            CandidateSource::Csv(_) => panic!("expected live source"),
-        }
-        assert_eq!(options.rules.pick_count, 7);
-    }
-
-    #[test]
-    fn parses_norsk_tipping_live_start_cutoff() {
-        let options = CliOptions::parse(
-            [
-                "--norsk-tipping-live",
-                "--date",
-                "2026-05-16",
-                "--nt-earliest-start",
-                "2026-05-16T16:00",
-                "--nt-latest-start",
-                "2026-05-17T05:00",
-            ]
-            .into_iter()
-            .map(str::to_string),
-        )
-        .expect("valid options");
-
-        match options.source {
-            CandidateSource::NorskTippingLive(live) => {
-                assert_eq!(live.earliest_start.as_deref(), Some("2026-05-16T16:00"));
-                assert_eq!(live.latest_start.as_deref(), Some("2026-05-17T05:00"));
-            }
-            CandidateSource::Csv(_) => panic!("expected live source"),
-        }
-        assert_eq!(
-            options.rules.latest_start.as_deref(),
-            Some("2026-05-17T05:00")
-        );
-    }
-
-    #[test]
-    fn parses_reference_odds_path() {
-        let options = CliOptions::parse(
-            [
-                "--norsk-tipping-live",
-                "--date",
-                "2026-05-16",
-                "--reference-odds",
-                "reference_odds.csv",
-            ]
-            .into_iter()
-            .map(str::to_string),
-        )
-        .expect("valid options");
-
-        assert_eq!(
-            options.reference_odds.source_path.as_deref(),
-            Some("reference_odds.csv")
-        );
-    }
+fn odds_api_settings(options: &mut Option<TheOddsApiOptions>) -> &mut TheOddsApiOptions {
+    options.get_or_insert_with(|| TheOddsApiOptions::new(String::new(), Vec::new()))
 }
+
+fn parse_list(raw: &str) -> Vec<String> {
+    raw.split(',')
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+fn validate_bookmaker_limit(bookmakers: Option<&str>) -> Result<(), String> {
+    let count = bookmakers.map(parse_list).unwrap_or_default().len();
+    if count > MAX_BOOKMAKERS {
+        return Err(format!(
+            "--odds-api-bookmakers supports at most {MAX_BOOKMAKERS} bookmaker keys"
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests;

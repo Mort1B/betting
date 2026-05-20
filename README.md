@@ -14,6 +14,8 @@ tool does not research or rank prices below `1.10` or above `1.35`.
 - Rust CLI for deterministic candidate scoring.
 - Live Norsk Tipping Oddsen loader for same-day candidates.
 - CSV candidate input for fixtures, manual runs, and fallback testing.
+- Optional reference odds enrichment from CSV or an env-gated The Odds API
+  provider for h2h prices and opt-in totals prices.
 - Structured football context checks for form, injuries/suspensions,
   motivation, schedule/travel, and market context.
 - Deterministic learning from settled historical picks, capped so history cannot
@@ -22,7 +24,8 @@ tool does not research or rank prices below `1.10` or above `1.35`.
 - Four OpenAI API review agents: `Explorer`, `Reviewer`, `Risk Manager`, and
   `Output Writer`.
 - GitHub Actions runs the daily report workflow.
-- GitHub Pages publishes the report to a tokenized `today.txt` URL.
+- GitHub Pages publishes the report to tokenized `today.html`, `today.txt`, and
+  `today.json` URLs.
 - GitHub Pages also publishes tokenized `history.jsonl` pick history for future
   learning and audit work.
 - iPhone Shortcuts can fetch the report URL every day.
@@ -45,16 +48,20 @@ Schedule:
 
 That is 16:00 and midnight in Norway during daylight saving time.
 
-Required GitHub Actions secrets:
+GitHub Actions secrets:
 
 - `BETTING_REPORT_TOKEN`: long random token for the private-by-obscurity report
   path.
 - `OPENAI_API_KEY`: paid OpenAI API key for the four-agent review.
+- `BETTING_ODDS_API_KEY`: optional key for The Odds API reference-price
+  enrichment.
 
 Report URL shape:
 
 ```text
+https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.html
 https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.txt
+https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.json
 ```
 
 Pick history URL shape:
@@ -115,6 +122,26 @@ Live source controls:
   thread checks and football news or market pages are all included.
 - `BETTING_REFERENCE_ODDS_CSV=/path/to/reference_odds.csv` optionally adds
   external comparison prices for audit context. It is not required.
+- `BETTING_ODDS_API_KEY=...` enables live reference-price enrichment from The
+  Odds API. The provider matches h2h/main-market football prices by default and
+  can also match over/under totals when `BETTING_ODDS_API_MARKETS` includes
+  `totals`. It can match double-chance selections only when
+  `BETTING_ODDS_API_MARKETS` includes `double_chance`.
+- `BETTING_ODDS_API_BOOKMAKERS` defaults to five explicit bookmaker keys:
+  `unibet_se,pinnacle,betfair_ex_eu,betsson,williamhill`. The CLI rejects more
+  than five keys so the free-tier setup stays bounded.
+- `BETTING_ODDS_API_SPORTS` defaults to a small Nordic/MLS football set:
+  `soccer_norway_eliteserien,soccer_sweden_allsvenskan,soccer_denmark_superliga,soccer_finland_veikkausliiga,soccer_usa_mls`.
+- `BETTING_ODDS_API_REGIONS=eu`, `BETTING_ODDS_API_MARKETS=h2h`, and
+  `BETTING_ODDS_API_BOOKMAKERS` customize provider requests. Scheduled runs keep
+  `h2h` as the default to conserve free-tier credits. Use
+  `BETTING_ODDS_API_MARKETS=h2h,totals` only when over/under comparison prices
+  are worth the extra market request cost. Use
+  `BETTING_ODDS_API_MARKETS=h2h,double_chance` only when double-chance
+  comparison prices are worth event-level calls. When bookmaker keys are
+  supplied, The Odds API prioritizes them over `regions`.
+- `BETTING_ODDS_API_EVENT_ODDS_LIMIT=2` caps event-level odds requests used for
+  `double_chance`. This is a total cap per run, not per bookmaker.
 - `BETTING_CANDIDATE_SOURCE=csv` uses `BETTING_INPUT_CSV` instead.
 
 ## Optional Reference Odds
@@ -143,6 +170,24 @@ When multiple rows match the same candidate, the tool converts each reference
 price to implied probability, averages the probabilities, and converts the
 consensus back to decimal odds. Existing `reference_odds` in the main candidate
 CSV are not overwritten.
+
+The optional The Odds API provider uses the same in-memory reference row shape as
+CSV enrichment, so Norsk Tipping remains the final bet price. Provider errors,
+empty sport responses, or unmatched API events are appended as reference-provider
+notes in the report instead of failing the daily run. The report run summary
+also prints request count, successful request count, returned event count,
+matched reference row count, matched candidate count, and bookmaker key count
+without printing the API key. The provider requests decimal `h2h` odds by
+default from a maximum of five configured bookmaker keys. It can also request
+and match decimal `totals` odds for Norsk Tipping over/under selections when
+`BETTING_ODDS_API_MARKETS` includes `totals`. It can request event-level
+`double_chance` odds for matched candidate events when
+`BETTING_ODDS_API_MARKETS` includes `double_chance`, capped by
+`BETTING_ODDS_API_EVENT_ODDS_LIMIT`. It can use The Odds API sport keys
+documented at
+`https://the-odds-api.com/liveapi/guides/v4/`. The default bookmaker keys are
+based on the official The Odds API bookmaker list, using the Nordic Unibet key
+plus Pinnacle, Betfair Exchange, Betsson, and William Hill.
 
 ## Candidate CSV Fallback
 
@@ -209,6 +254,14 @@ target, pick-history status, source coverage, missing football context, and the
 learning summary. Each pick then keeps its own research counts, learning note,
 strict status, and football context checklist.
 
+The static publisher also writes `today.json` beside the text report. The JSON
+contains the complete deterministic ranked picks, the final text report, the
+deterministic text report, reference-provider notes, and whether the optional AI
+rewrite was used or fell back. The tokenized `today.html` page displays
+`today.txt` in a wrapping text view and links directly to the JSON fallback.
+The publisher validates `today.json` before completing, including ranked-pick
+heading completeness and secret redaction checks.
+
 ## Agent Workflow
 
 Deterministic Rust agents:
@@ -262,7 +315,8 @@ research rather than a source failure.
 
 ## Pick History
 
-The static publisher writes `history.jsonl` beside `today.txt`. Before each
+The static publisher writes `history.jsonl` beside `today.txt` and `today.json`.
+Before each
 publish it fetches the previous Pages copy, merges the current picks by report
 date, event, market, selection, and start time, and republishes the combined
 file.

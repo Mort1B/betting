@@ -102,12 +102,17 @@ The scheduled workflow enables the API path:
 ```yaml
 BETTING_ENABLE_AI: "true"
 BETTING_OPENAI_MODEL: gpt-5.5
+BETTING_AI_MAX_OUTPUT_TOKENS: "3500"
 OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```
 
 If your account does not have access to `gpt-5.5`, change
 `BETTING_OPENAI_MODEL` in `.github/workflows/daily-report.yml` to the exact model
 available in your OpenAI project.
+
+If the model returns incomplete output or the Output Writer omits ranked
+candidate headings, the publisher falls back to the full deterministic report
+instead of publishing a partial AI rewrite.
 
 ## Official API References
 

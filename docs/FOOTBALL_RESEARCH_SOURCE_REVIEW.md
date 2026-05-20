@@ -112,13 +112,48 @@ Decision:
 
 ## Proposed Next Implementation
 
-1. Add a generic `reference_odds_provider` adapter that can write the existing
+Status on 2026-05-20:
+
+1. Added a generic reference-odds provider adapter that writes the existing
    `ReferenceOddsRow` shape in memory.
-2. Add an implementation behind env-gated credentials, for example
+2. Added an env-gated The Odds API implementation wired through
    `BETTING_ODDS_API_KEY`.
-3. Match API events to Norsk Tipping candidates by normalized teams, start time,
-   market, and selection.
-4. Keep failures visible as source-error or reference-odds notes, not as hard
-   report failures.
-5. Add tests with local fixture JSON for odds-provider matching before using any
-   paid API in GitHub Actions.
+3. The provider matches h2h/main-market football events to Norsk Tipping
+   candidates by normalized teams, kickoff time, market shape, and selection.
+4. The default bookmaker set is capped to five explicit keys:
+   `unibet_se,pinnacle,betfair_ex_eu,betsson,williamhill`.
+5. Provider HTTP, JSON, empty-response, and no-match outcomes are appended as
+   reference-provider notes instead of failing the report.
+6. Added a local The Odds API h2h JSON fixture test before enabling the paid API
+   path in scheduled GitHub Actions.
+7. Added a report run-summary line for provider request count, successful
+   request count, returned events, matched reference rows, matched candidates,
+   and bookmaker-key count without exposing the API key.
+8. Added opt-in The Odds API `totals` mapping for Norsk Tipping over/under
+   selections. Scheduled defaults remain `h2h` only to conserve credits.
+9. Added opt-in The Odds API `double_chance` mapping through the event-level
+   odds endpoint, capped by `BETTING_ODDS_API_EVENT_ODDS_LIMIT`. Scheduled
+   defaults remain `h2h` only.
+
+Remaining useful follow-up:
+
+1. Run one live, manually triggered provider smoke with
+   `BETTING_ODDS_API_MARKETS=h2h,double_chance` and a low
+   `BETTING_ODDS_API_EVENT_ODDS_LIMIT` only when spending those credits is
+   acceptable.
+
+## Closeout Hardening Plan
+
+Status on 2026-05-20:
+
+1. Tighten AI role instructions so Explorer acts as a football market analyst
+   and Reviewer acts as a football betting skeptic, while both remain restricted
+   to supplied evidence.
+2. Add Odds API credit telemetry from response headers to the provider run
+   summary.
+3. Add source freshness notes for provider odds updates.
+4. Add reference-market range, average, source count, and disagreement notes to
+   candidate context.
+5. Validate static report artifacts before publishing so partial JSON/text or
+   unredacted secret-looking values fail the workflow.
+6. Document `today.json` as the preferred iPhone Shortcut input.
