@@ -17,6 +17,9 @@ market context stay `unknown` for daily Norsk Tipping football picks.
   checklist is also all `unknown`, the candidate is missing independent support.
 - Market context should come from structured bookmaker comparison, not from
   social posts. The Odds API remains the right source for this layer.
+- Generic football tips pages must not supply checklist context unless both
+  sides of the candidate fixture are found in the source text. Broad league,
+  market, or selection words are too weak and can make every pick look the same.
 
 ## Immediate Guardrail
 
@@ -97,6 +100,9 @@ Status on 2026-05-20:
 8. Provider errors and request counts are shown as football-data provider notes
    without exposing the API key.
 9. `today.json` now includes `football_data_provider_notes`.
+10. Generic research matching now requires candidate event/team terms and the
+    football motivation keyword list no longer treats the bare word `europe` as
+    context.
 
 Remaining useful follow-up:
 

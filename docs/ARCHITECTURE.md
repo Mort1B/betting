@@ -137,6 +137,9 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 
 - Matches research page text against each candidate's event, market, selection,
   and competition terms.
+- Requires event/team terms from both sides of the fixture before a research
+  page can affect candidate research or football context, so broad football
+  tips pages cannot give every pick the same context.
 - Adds evidence notes to the final report.
 - Treats social and betting-page findings as weak signals, not formal proof of
   value.

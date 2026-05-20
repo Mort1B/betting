@@ -80,6 +80,7 @@ pub fn assess_candidate_research(
     let mut price_hints = Vec::new();
     let mut notes = Vec::new();
     let terms = candidate_terms(candidate);
+    let event_terms = split_terms(&candidate.event);
 
     for page in &digest.pages {
         if let Some(error) = &page.error {
@@ -87,9 +88,12 @@ pub fn assess_candidate_research(
             continue;
         }
 
+        if !has_candidate_specific_event_match(page.search_text(), &event_terms) {
+            continue;
+        }
         let term_hits = terms
             .iter()
-            .filter(|term| page.search_text().contains(*term))
+            .filter(|term| contains_term(page.search_text(), term))
             .count();
         if term_hits < 2 {
             continue;
@@ -181,18 +185,37 @@ fn candidate_terms(candidate: &BetCandidate) -> Vec<String> {
         candidate.market.as_str(),
         candidate.competition.as_str(),
     ] {
-        for part in raw
-            .split(|ch: char| !ch.is_alphanumeric())
-            .map(str::trim)
-            .filter(|part| part.len() >= 4)
-        {
-            let lower = part.to_lowercase();
+        for lower in split_terms(raw) {
             if !terms.contains(&lower) {
                 terms.push(lower);
             }
         }
     }
     terms
+}
+
+fn split_terms(raw: &str) -> Vec<String> {
+    raw.split(|ch: char| !ch.is_alphanumeric())
+        .map(str::trim)
+        .filter(|part| part.len() >= 4)
+        .map(str::to_lowercase)
+        .collect()
+}
+
+fn has_candidate_specific_event_match(text: &str, event_terms: &[String]) -> bool {
+    if event_terms.len() >= 2 {
+        return event_terms
+            .iter()
+            .filter(|term| contains_term(text, term))
+            .count()
+            >= 2;
+    }
+    event_terms.iter().any(|term| contains_term(text, term))
+}
+
+fn contains_term(text: &str, term: &str) -> bool {
+    text.split(|ch: char| !ch.is_alphanumeric())
+        .any(|word| word == term)
 }
 
 fn normalize_search_text(title: &str, text: &str) -> String {
@@ -253,6 +276,44 @@ mod tests {
                 .iter()
                 .any(|note| note.contains("source error: blocked source: returned 403"))
         );
+    }
+
+    #[test]
+    fn ignores_generic_pages_without_event_terms() {
+        let digest = ResearchDigest {
+            pages: vec![ResearchPage::new(
+                "SportyTrader football tips".to_string(),
+                "https://example.test".to_string(),
+                "Football betting tips".to_string(),
+                "Premier League value tips mention over goals and draw markets.".to_string(),
+                vec![ResearchSignal::Positive("value".to_string())],
+                None,
+            )],
+        };
+
+        let assessment = assess_candidate_research(&candidate(), Some(&digest));
+
+        assert_eq!(assessment.matched_pages, 0);
+        assert_eq!(assessment.positive_mentions, 0);
+    }
+
+    #[test]
+    fn matches_pages_with_both_event_sides() {
+        let digest = ResearchDigest {
+            pages: vec![ResearchPage::new(
+                "preview".to_string(),
+                "https://example.test".to_string(),
+                "Rosenborg Brann preview".to_string(),
+                "Rosenborg vs Brann looks like value at 1.27.".to_string(),
+                vec![ResearchSignal::Positive("value".to_string())],
+                None,
+            )],
+        };
+
+        let assessment = assess_candidate_research(&candidate(), Some(&digest));
+
+        assert_eq!(assessment.matched_pages, 1);
+        assert_eq!(assessment.positive_mentions, 1);
     }
 
     fn candidate() -> BetCandidate {
