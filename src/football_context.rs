@@ -3,6 +3,7 @@ use crate::domain::{
 };
 use crate::research::ResearchDigest;
 
+mod api_evidence;
 #[cfg(test)]
 mod tests;
 
@@ -78,6 +79,7 @@ pub fn assess_football_context(
             );
         }
     }
+    api_evidence::append_unknown_api_evidence(&mut categories, candidate);
 
     if matched_pages == 0 {
         notes.push("no candidate-specific football research match found".to_string());
