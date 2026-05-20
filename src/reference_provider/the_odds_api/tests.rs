@@ -37,6 +37,84 @@ fn maps_fixture_h2h_odds_to_reference_rows() {
 }
 
 #[test]
+fn matches_provider_team_suffixes_and_diacritics() {
+    let events = parse_events(
+        r#"[
+          {
+            "id": "fixture-palmeiras-cerro",
+            "sport_title": "Copa Libertadores",
+            "commence_time": "2026-05-21T00:30:00Z",
+            "home_team": "Palmeiras",
+            "away_team": "Cerro Porteño",
+            "bookmakers": [
+              {
+                "title": "Book A",
+                "markets": [
+                  {
+                    "key": "h2h",
+                    "outcomes": [
+                      {"name": "Palmeiras", "price": 1.22},
+                      {"name": "Draw", "price": 5.60},
+                      {"name": "Cerro Porteño", "price": 9.50}
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "fixture-independiente-botafogo",
+            "sport_title": "Copa Sudamericana",
+            "commence_time": "2026-05-21T00:00:00Z",
+            "home_team": "Independiente Petrolero",
+            "away_team": "Botafogo",
+            "bookmakers": [
+              {
+                "title": "Book A",
+                "markets": [
+                  {
+                    "key": "h2h",
+                    "outcomes": [
+                      {"name": "Independiente Petrolero", "price": 7.20},
+                      {"name": "Draw", "price": 4.80},
+                      {"name": "Botafogo", "price": 1.27}
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]"#,
+    )
+    .expect("fixture JSON");
+    let mut palmeiras = candidate();
+    palmeiras.id = "nt-palmeiras-cerro".to_string();
+    palmeiras.competition = "Copa Libertadores".to_string();
+    palmeiras.event = "Palmeiras - Cerro Porteno".to_string();
+    palmeiras.selection = "Cerro Porteno".to_string();
+    palmeiras.starts_at = "2026-05-21T02:30:00+02:00".to_string();
+    let mut botafogo = candidate();
+    botafogo.id = "nt-botafogo-rj".to_string();
+    botafogo.competition = "Copa Sudamericana".to_string();
+    botafogo.event = "Independiente Petrolero - Botafogo RJ".to_string();
+    botafogo.selection = "Botafogo RJ".to_string();
+    botafogo.starts_at = "2026-05-21T02:00:00+02:00".to_string();
+
+    let rows = reference_rows_from_events(&[palmeiras, botafogo], &events);
+
+    assert_eq!(rows.len(), 2);
+    assert!(rows.iter().any(
+        |row| row.candidate_id.as_deref() == Some("nt-palmeiras-cerro")
+            && (row.reference_odds - 9.50).abs() < 0.001
+    ));
+    assert!(
+        rows.iter()
+            .any(|row| row.candidate_id.as_deref() == Some("nt-botafogo-rj")
+                && (row.reference_odds - 1.27).abs() < 0.001)
+    );
+}
+
+#[test]
 fn maps_fixture_totals_odds_when_market_is_enabled() {
     let events =
         parse_events(include_str!("../../../fixtures/the_odds_api_h2h.json")).expect("fixture");

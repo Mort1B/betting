@@ -1,5 +1,6 @@
 use crate::domain::BetCandidate;
 
+use super::name_match::{names_match, normalize_tokens};
 use super::{TheOddsApiMarket, TheOddsApiOutcome};
 
 pub(super) fn candidate_matches_market_outcome(
@@ -45,7 +46,7 @@ fn is_h2h_candidate_market(market: &str) -> bool {
 }
 
 fn outcome_matches_selection(selection: &str, outcome_name: &str) -> bool {
-    normalize_key(selection) == normalize_key(outcome_name)
+    names_match(selection, outcome_name)
 }
 
 fn is_double_chance_candidate(market: &str, selection: &str) -> bool {
@@ -186,12 +187,5 @@ fn extract_decimal(value: &str) -> Option<f64> {
 }
 
 fn normalize_key(value: &str) -> String {
-    value
-        .chars()
-        .flat_map(char::to_lowercase)
-        .map(|ch| if ch.is_alphanumeric() { ch } else { ' ' })
-        .collect::<String>()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
+    normalize_tokens(value).join(" ")
 }

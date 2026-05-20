@@ -2,6 +2,7 @@ use crate::domain::BetCandidate;
 use crate::reference::ReferenceOddsRow;
 
 use super::market_match::{candidate_matches_market_outcome, candidate_supports_market_key};
+use super::name_match::{comparable_name, names_match};
 use super::time::iso_to_utc_minutes;
 use super::{
     START_TOLERANCE_MINUTES, TheOddsApiBookmaker, TheOddsApiEvent, TheOddsApiMarket,
@@ -140,34 +141,23 @@ fn candidate_matches_event(
 }
 
 fn teams_match(candidate_teams: &(String, String), event: &TheOddsApiEvent) -> bool {
-    let home = normalize_key(&event.home_team);
-    let away = normalize_key(&event.away_team);
-    (candidate_teams.0 == home && candidate_teams.1 == away)
-        || (candidate_teams.0 == away && candidate_teams.1 == home)
+    (names_match(&candidate_teams.0, &event.home_team)
+        && names_match(&candidate_teams.1, &event.away_team))
+        || (names_match(&candidate_teams.0, &event.away_team)
+            && names_match(&candidate_teams.1, &event.home_team))
 }
 
 fn candidate_event_teams(event: &str) -> Option<(String, String)> {
     for separator in [" - ", " vs. ", " vs ", " v ", " @ "] {
         if let Some((left, right)) = event.split_once(separator) {
-            let left = normalize_key(left);
-            let right = normalize_key(right);
+            let left = comparable_name(left);
+            let right = comparable_name(right);
             if !left.is_empty() && !right.is_empty() {
                 return Some((left, right));
             }
         }
     }
     None
-}
-
-fn normalize_key(value: &str) -> String {
-    value
-        .chars()
-        .flat_map(char::to_lowercase)
-        .map(|ch| if ch.is_alphanumeric() { ch } else { ' ' })
-        .collect::<String>()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
 }
 
 fn push_unique(values: &mut Vec<String>, value: &str) {
