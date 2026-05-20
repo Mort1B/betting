@@ -200,9 +200,9 @@ and match decimal `totals` odds for Norsk Tipping over/under selections when
 `BETTING_ODDS_API_EVENT_ODDS_LIMIT`. `BETTING_ODDS_API_SPORTS=auto` maps common
 Norsk Tipping competition names to The Odds API sport keys documented at
 `https://the-odds-api.com/sports-odds-data/sports-apis.html`, including Copa
-Libertadores and Copa Sudamericana. The default bookmaker keys are based on the
-official The Odds API bookmaker list, using the Nordic Unibet key plus Pinnacle,
-Betfair Exchange, Betsson, and William Hill.
+Libertadores, Copa Sudamericana, and FIFA World Cup fixtures. The default
+bookmaker keys are based on the official The Odds API bookmaker list, using the
+Nordic Unibet key plus Pinnacle, Betfair Exchange, Betsson, and William Hill.
 
 ## Candidate CSV Fallback
 

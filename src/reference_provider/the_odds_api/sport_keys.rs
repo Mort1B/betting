@@ -46,6 +46,38 @@ const SPORT_KEY_MAPPINGS: &[SportKeyMapping] = &[
         sport_key: "soccer_conmebol_copa_america",
     },
     SportKeyMapping {
+        patterns: &[
+            "fifa world cup qualifiers europe",
+            "world cup qualifiers europe",
+            "european world cup qualifiers",
+            "vm kvalifisering europa",
+        ],
+        sport_key: "soccer_fifa_world_cup_qualifiers_europe",
+    },
+    SportKeyMapping {
+        patterns: &[
+            "fifa world cup qualifiers south america",
+            "world cup qualifiers south america",
+            "south american world cup qualifiers",
+            "vm kvalifisering sor amerika",
+        ],
+        sport_key: "soccer_fifa_world_cup_qualifiers_south_america",
+    },
+    SportKeyMapping {
+        patterns: &["fifa club world cup", "club world cup"],
+        sport_key: "soccer_fifa_club_world_cup",
+    },
+    SportKeyMapping {
+        patterns: &[
+            "fifa world cup",
+            "world cup",
+            "fotball vm",
+            "verdensmesterskapet",
+            "vm",
+        ],
+        sport_key: "soccer_fifa_world_cup",
+    },
+    SportKeyMapping {
         patterns: &["brazil serie a", "brasileirao", "campeonato brasileiro"],
         sport_key: "soccer_brazil_campeonato",
     },
@@ -163,7 +195,7 @@ fn inferred_sport_keys(candidate: &BetCandidate) -> Vec<&'static str> {
         if mapping
             .patterns
             .iter()
-            .any(|pattern| contains_pattern(&competition, pattern))
+            .any(|pattern| competition_matches_pattern(&competition, pattern))
         {
             push_unique_str(&mut sport_keys, mapping.sport_key);
         }
@@ -188,7 +220,15 @@ fn normalized_text(value: &str) -> String {
         .join(" ")
 }
 
-fn contains_pattern(value: &str, pattern: &str) -> bool {
+fn competition_matches_pattern(value: &str, pattern: &str) -> bool {
+    if matches!(pattern, "fifa world cup" | "world cup")
+        && (value.contains("qualifier") || value.contains("club") || value.contains("women"))
+    {
+        return false;
+    }
+    if pattern == "vm" && (value.contains("kvalifisering") || value.contains("kvinner")) {
+        return false;
+    }
     if pattern
         .chars()
         .all(|character| character.is_ascii_alphanumeric())
@@ -274,5 +314,26 @@ mod tests {
         );
 
         assert_eq!(sport_keys, vec!["soccer_sweden_allsvenskan".to_string()]);
+    }
+
+    #[test]
+    fn auto_infers_world_cup_without_collapsing_qualifiers() {
+        let sport_keys = resolve_sport_keys(
+            &["auto".to_string()],
+            &[
+                candidate("FIFA World Cup"),
+                candidate("FIFA World Cup Qualifiers - Europe"),
+                candidate("FIFA World Cup Qualifiers - South America"),
+            ],
+        );
+
+        assert_eq!(
+            sport_keys,
+            vec![
+                "soccer_fifa_world_cup".to_string(),
+                "soccer_fifa_world_cup_qualifiers_europe".to_string(),
+                "soccer_fifa_world_cup_qualifiers_south_america".to_string()
+            ]
+        );
     }
 }
