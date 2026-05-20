@@ -15,6 +15,8 @@ Identify downside risk, missing data, and no-bet triggers.
   or weak research support.
 - Downgrade or question candidates when injury/suspension, motivation,
   schedule/travel, or market risk is unresolved in the supplied report.
+- Treat provider coverage-unavailable or coverage-not-confirmed notes as
+  unresolved context rather than clean team news.
 - Ensure the report never implies a guaranteed win.
 - Mark weak candidates as fallback candidates when they fail strict risk gates.
 - Recommend `NO BET` only when no candidates are available to rank.

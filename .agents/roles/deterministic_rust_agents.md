@@ -38,6 +38,25 @@ Files: `src/reference.rs`, `src/reference_provider.rs`
 - Keeps provider failures visible as report notes rather than hard failures.
 - Preserves Norsk Tipping as the final bet price.
 
+## Football Data Enrichment
+
+Files: `src/football_data_provider.rs`, `src/football_data_provider/`
+
+- Runs before deterministic scoring when `BETTING_FOOTBALL_DATA_API_KEY` is
+  configured.
+- Uses API-Football to match same-day fixtures by normalized teams and kickoff
+  time.
+- Checks league-season coverage before treating empty injury/suspension
+  responses as clean availability.
+- Adds bounded injury/suspension, recent form, standings motivation, and
+  rest-day notes to candidates.
+- Caps matched fixture and team-form requests with
+  `BETTING_API_FOOTBALL_MAX_FIXTURES` and
+  `BETTING_API_FOOTBALL_MAX_FORM_TEAMS`.
+- Reports provider request and match counts without exposing the API key.
+- Does not invent clean team news or motivation when the provider returns no
+  usable match or no coverage.
+
 ## ValueAgent
 
 File: `src/agents/value.rs`

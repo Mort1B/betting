@@ -17,6 +17,8 @@ Write the final user-facing report.
   when supplied.
 - Include the football context checklist and learning note for each pick.
 - Preserve unknown context and insufficient-history warnings.
+- Preserve provider coverage notes when they explain why injury/suspension or
+  motivation context remains unresolved.
 
 ## Required Fields Per Pick
 

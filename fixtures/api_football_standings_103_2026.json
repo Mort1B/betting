@@ -1,0 +1,52 @@
+{
+  "get": "standings",
+  "parameters": {
+    "league": "103",
+    "season": "2026"
+  },
+  "errors": [],
+  "results": 1,
+  "paging": {
+    "current": 1,
+    "total": 1
+  },
+  "response": [
+    {
+      "league": {
+        "id": 103,
+        "name": "Eliteserien",
+        "season": 2026,
+        "standings": [
+          [
+            {
+              "rank": 1,
+              "team": {
+                "id": 331,
+                "name": "Rosenborg"
+              },
+              "points": 28,
+              "goalsDiff": 15,
+              "group": "Regular Season",
+              "form": "WWWWW",
+              "status": "same",
+              "description": "Promotion - Champions League"
+            },
+            {
+              "rank": 16,
+              "team": {
+                "id": 332,
+                "name": "Brann"
+              },
+              "points": 7,
+              "goalsDiff": -12,
+              "group": "Regular Season",
+              "form": "LLLLL",
+              "status": "down",
+              "description": "Relegation"
+            }
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -31,12 +31,22 @@ comparison signals.
    - Produces optional `reference_odds` without changing Norsk Tipping as the
      final bet price.
 
-3. `Market Research Client`
+3. `Football Data Enrichment`
+   - Optionally applies API-Football fixture, coverage, injury/suspension,
+     recent form, standings motivation, and rest-day context when
+     `BETTING_FOOTBALL_DATA_API_KEY` is configured.
+   - Caps matched fixture and team-form requests to keep scheduled API usage
+     bounded.
+   - Treats unavailable coverage as missing context, not as positive evidence.
+   - Adds supplied context into candidate notes before the football checklist is
+     assessed.
+
+4. `Market Research Client`
    - Fetches configured football Reddit JSON and HTML research sources.
    - Uses `examples/football_research_sources.txt` by default.
    - Produces positive, warning, and price-hint signals.
 
-4. `Deterministic Rust Agents`
+5. `Deterministic Rust Agents`
    - Filter by date and the hard research odds band.
    - Keep `1.10-1.30` as the preferred odds band and `1.30-1.35` as fallback
      slack only.
@@ -50,31 +60,31 @@ comparison signals.
      when enough similar picks exist.
    - Rank bettable candidates.
 
-5. `Learning Note`
+6. `Learning Note`
    - Every pick reports whether history was unavailable, insufficient, or
      adjusted confidence from a settled bucket.
    - Pending, void, and unknown results are ignored for learning.
 
-6. `Explorer`
+7. `Explorer`
    - Reviews the deterministic top-5 for value evidence.
 
-7. `Reviewer`
+8. `Reviewer`
    - Challenges the ranking and overclaiming.
 
-8. `Risk Manager`
+9. `Risk Manager`
    - Looks for downside risk and no-bet triggers.
 
-9. `Output Writer`
+10. `Output Writer`
    - Writes the final report for GitHub Pages and iPhone Shortcut consumption.
    - Must preserve every ranked candidate heading so the publisher can reject
      partial AI output.
 
-10. `Pick History`
+11. `Pick History`
    - Publishes `history.jsonl` beside `today.txt`.
    - Fetches the previous Pages history before publishing when available.
    - Merges current picks idempotently and preserves settled results.
 
-11. `Result Settlement`
+12. `Result Settlement`
    - Runs only from explicit `BETTING_SETTLEMENTS_JSONL` JSON Lines records.
    - Requires exact history keys and a settlement source.
    - Supports `win`, `loss`, `void`, and `unknown`.

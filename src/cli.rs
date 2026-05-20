@@ -1,5 +1,6 @@
 use crate::ai::AiOptions;
 use crate::domain::{BettingRules, SportScope};
+use crate::football_data_provider::{ApiFootballOptions, FootballDataOptions};
 use crate::norsk_tipping::LiveOddsOptions;
 use crate::notify::DeliveryOptions;
 use crate::reference::ReferenceOddsOptions;
@@ -12,6 +13,7 @@ pub(crate) struct CliOptions {
     pub(crate) rules: BettingRules,
     pub(crate) research: ResearchOptions,
     pub(crate) reference_odds: ReferenceOddsOptions,
+    pub(crate) football_data: FootballDataOptions,
     pub(crate) delivery: DeliveryOptions,
     pub(crate) ai: AiOptions,
 }
@@ -31,6 +33,7 @@ impl CliOptions {
         let mut research = ResearchOptions::default();
         let mut reference_odds = ReferenceOddsOptions::default();
         let mut odds_api_options: Option<TheOddsApiOptions> = None;
+        let mut api_football_options: Option<ApiFootballOptions> = None;
         let mut delivery = DeliveryOptions::default();
         let mut ai = AiOptions::default();
         let mut input_path = None;
@@ -106,6 +109,26 @@ impl CliOptions {
                     odds_api_settings(&mut odds_api_options).event_odds_limit =
                         parse_usize(&mut args, "--odds-api-event-odds-limit")?;
                 }
+                "--api-football-key" => {
+                    api_football_settings(&mut api_football_options).api_key =
+                        next_value(&mut args, "--api-football-key")?;
+                }
+                "--api-football-base-url" => {
+                    api_football_settings(&mut api_football_options).base_url =
+                        next_value(&mut args, "--api-football-base-url")?;
+                }
+                "--api-football-timezone" => {
+                    api_football_settings(&mut api_football_options).timezone =
+                        next_value(&mut args, "--api-football-timezone")?;
+                }
+                "--api-football-max-fixtures" => {
+                    api_football_settings(&mut api_football_options).max_context_fixtures =
+                        parse_usize(&mut args, "--api-football-max-fixtures")?;
+                }
+                "--api-football-max-form-teams" => {
+                    api_football_settings(&mut api_football_options).max_form_teams =
+                        parse_usize(&mut args, "--api-football-max-form-teams")?;
+                }
                 "--max-research-pages" => {
                     research.max_pages = parse_usize(&mut args, "--max-research-pages")?;
                 }
@@ -140,6 +163,15 @@ impl CliOptions {
             validate_bookmaker_limit(odds_api.bookmakers.as_deref())?;
             reference_odds.providers.the_odds_api = Some(odds_api);
         }
+        let mut football_data = FootballDataOptions::default();
+        if let Some(api_football) = api_football_options {
+            if api_football.api_key.trim().is_empty() {
+                return Err(
+                    "--api-football-key is required when API-Football options are set".to_string(),
+                );
+            }
+            football_data.api_football = Some(api_football);
+        }
         let source = if use_norsk_tipping_live {
             if rules.date.is_none() {
                 return Err("--norsk-tipping-live requires --date YYYY-MM-DD".to_string());
@@ -154,6 +186,7 @@ impl CliOptions {
             rules,
             research,
             reference_odds,
+            football_data,
             delivery,
             ai,
         })
@@ -185,6 +218,9 @@ impl CliOptions {
            --odds-api-regions LIST    provider regions, default eu\n\
            --odds-api-bookmakers LIST provider bookmaker keys, max 5\n\
            --odds-api-event-odds-limit N max event-level odds calls, default 2\n\
+           --api-football-key KEY     enable API-Football context provider\n\
+           --api-football-max-fixtures N max matched fixtures to enrich, default 2\n\
+           --api-football-max-form-teams N max team-form calls, default 4\n\
            --max-research-pages N     default 10\n\
            --max-research-items N     default 10 for listing sources\n\
            --send-email               send report through SMTP env vars\n\
@@ -233,6 +269,10 @@ where
 
 fn odds_api_settings(options: &mut Option<TheOddsApiOptions>) -> &mut TheOddsApiOptions {
     options.get_or_insert_with(|| TheOddsApiOptions::new(String::new(), Vec::new()))
+}
+
+fn api_football_settings(options: &mut Option<ApiFootballOptions>) -> &mut ApiFootballOptions {
+    options.get_or_insert_with(|| ApiFootballOptions::new(String::new()))
 }
 
 fn parse_list(raw: &str) -> Vec<String> {
