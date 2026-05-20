@@ -22,11 +22,20 @@ File: `src/agents/probability.rs`
 
 ## Reference Odds Enrichment
 
-File: `src/reference.rs`
+Files: `src/reference.rs`, `src/reference_provider.rs`
 
 - Applies optional external comparison prices before agent scoring.
 - Matches reference rows by candidate id or normalized event, market, and
   selection.
+- Can enrich h2h/main-market football prices through The Odds API when
+  `BETTING_ODDS_API_KEY` is configured.
+- Can enrich over/under totals only when `BETTING_ODDS_API_MARKETS` explicitly
+  includes `totals`.
+- Can enrich double-chance prices only when `BETTING_ODDS_API_MARKETS`
+  explicitly includes `double_chance`; event-level requests are capped.
+- Limits The Odds API request to at most 5 bookmaker keys by default.
+- Reports provider request and match counts without exposing the API key.
+- Keeps provider failures visible as report notes rather than hard failures.
 - Preserves Norsk Tipping as the final bet price.
 
 ## ValueAgent

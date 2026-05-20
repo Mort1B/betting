@@ -13,6 +13,8 @@ Write the final user-facing report.
 - Keep the report concise enough for iPhone reading.
 - Preserve Norsk Tipping as the final price.
 - Include value evidence and risk for each pick.
+- Include reference-market source count, freshness, and disagreement warnings
+  when supplied.
 - Include the football context checklist and learning note for each pick.
 - Preserve unknown context and insufficient-history warnings.
 

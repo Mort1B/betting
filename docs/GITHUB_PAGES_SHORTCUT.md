@@ -3,8 +3,9 @@
 This is the recommended low-secret setup:
 
 1. GitHub Actions runs the betting agent every morning.
-2. The workflow publishes a static text report to GitHub Pages.
-3. Your iPhone Shortcut fetches the report URL and shows a local notification.
+2. The workflow publishes static text, HTML, and JSON reports to GitHub Pages.
+3. Your iPhone Shortcut fetches the JSON report URL and shows a compact local
+   notification.
 
 No VPS, DNS, Gmail app password, Pushover token, or third-party push app is
 required.
@@ -59,7 +60,9 @@ Actions -> Daily Betting Report -> Run workflow
 After it deploys, your report URL will be:
 
 ```text
+https://<github-user>.github.io/<repo-name>/<BETTING_REPORT_TOKEN>/today.html
 https://<github-user>.github.io/<repo-name>/<BETTING_REPORT_TOKEN>/today.txt
+https://<github-user>.github.io/<repo-name>/<BETTING_REPORT_TOKEN>/today.json
 ```
 
 No custom domain is required.
@@ -73,16 +76,20 @@ Create a personal automation in Shortcuts:
 3. URL:
 
 ```text
-https://<github-user>.github.io/<repo-name>/<BETTING_REPORT_TOKEN>/today.txt
+https://<github-user>.github.io/<repo-name>/<BETTING_REPORT_TOKEN>/today.json
 ```
 
-4. Action: `Show Notification`.
-5. Notification body: the result from `Get Contents of URL`.
-6. Disable `Ask Before Running` if iOS offers that option.
+4. Action: `Get Dictionary from Input`.
+5. Action: get `decision.picks` from the dictionary.
+6. Action: build a short text body from the first 1-3 picks, for example rank,
+   event, market, selection, Norsk Tipping odds, strict status, and confidence
+   score.
+7. Action: `Show Notification`.
+8. Notification body: the compact text body.
+9. Disable `Ask Before Running` if iOS offers that option.
 
-If the notification text is too long, use `Show Result` or `Quick Look` instead
-of `Show Notification`, or change the Rust report to produce a shorter iPhone
-summary.
+Use the `today.html` URL with `Open URLs` or `Quick Look` when you want the full
+readable report. Use `today.txt` only for raw text debugging.
 
 ## Local Test
 
@@ -91,6 +98,7 @@ Before pushing, test the static publisher locally:
 ```bash
 BETTING_REPORT_TOKEN=test-token BETTING_PUBLIC_DIR=/tmp/betting-public scripts/publish_static_report.sh
 cat /tmp/betting-public/test-token/today.txt
+jq '.decision.picks[] | {rank, event: .candidate.event, market: .candidate.market, selection: .candidate.selection, odds: .candidate.norsk_tipping_odds}' /tmp/betting-public/test-token/today.json
 ```
 
 ## Sources

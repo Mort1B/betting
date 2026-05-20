@@ -3,12 +3,15 @@ use std::env;
 use crate::domain::{BettingRules, EvaluatedCandidate, RecommendationDecision};
 
 mod details;
+mod json;
 
 use details::push_ranked_candidate_details;
+pub(crate) use json::{JsonReportMeta, write_json_report};
 
 pub fn render_recommendation(
     rules: &BettingRules,
     recommendation: &RecommendationDecision,
+    reference_provider_notes: &[String],
 ) -> String {
     let mut output = String::new();
     output.push_str("Daily betting agent recommendation\n");
@@ -25,7 +28,7 @@ pub fn render_recommendation(
     if let Some(date) = &rules.date {
         output.push_str(&format!("Date filter: {date}\n"));
     }
-    push_run_summary(&mut output, rules, recommendation);
+    push_run_summary(&mut output, rules, recommendation, reference_provider_notes);
     output.push('\n');
 
     match recommendation {
@@ -86,6 +89,7 @@ fn push_run_summary(
     output: &mut String,
     rules: &BettingRules,
     recommendation: &RecommendationDecision,
+    reference_provider_notes: &[String],
 ) {
     let candidates = ranked_candidates(recommendation);
     output.push_str(&format!(
@@ -96,6 +100,7 @@ fn push_run_summary(
     output.push_str(&format!("Pick history: {}\n", history_status()));
     if candidates.is_empty() {
         output.push_str("Source coverage: no ranked candidates\n");
+        push_reference_provider_notes(output, reference_provider_notes);
         output.push_str("Learning summary: no ranked candidates\n");
         return;
     }
@@ -108,10 +113,21 @@ fn push_run_summary(
         "Missing context: {}\n",
         missing_context(&candidates)
     ));
+    push_reference_provider_notes(output, reference_provider_notes);
     output.push_str(&format!(
         "Learning summary: {}\n",
         learning_summary(&candidates)
     ));
+}
+
+fn push_reference_provider_notes(output: &mut String, notes: &[String]) {
+    for (index, note) in notes.iter().take(4).enumerate() {
+        if index == 0 {
+            output.push_str(&format!("Reference provider: {note}\n"));
+        } else {
+            output.push_str(&format!("Reference provider note: {note}\n"));
+        }
+    }
 }
 
 fn ranked_candidates(recommendation: &RecommendationDecision) -> Vec<&EvaluatedCandidate> {
@@ -190,4 +206,24 @@ fn learning_summary(candidates: &[&EvaluatedCandidate]) -> String {
         .and_then(|candidate| candidate.learning.notes.first())
         .cloned()
         .unwrap_or_else(|| "no learning note available".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::push_reference_provider_notes;
+
+    #[test]
+    fn prints_reference_provider_summary_and_notes() {
+        let notes = vec![
+            "The Odds API: sport odds requests 5/5, event list requests 0/0, event odds requests 0/0, returned 2 event(s), matched 1 reference row(s) for 1 candidate(s), bookmaker keys 5/5".to_string(),
+            "reference odds provider The Odds API returned events but no prices matched Norsk Tipping candidates".to_string(),
+        ];
+        let mut output = String::new();
+
+        push_reference_provider_notes(&mut output, &notes);
+
+        assert!(output.contains("Reference provider: The Odds API: sport odds requests 5/5"));
+        assert!(output.contains("Reference provider note: reference odds provider"));
+        assert!(!output.contains("apiKey"));
+    }
 }

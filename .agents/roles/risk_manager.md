@@ -11,7 +11,8 @@ Identify downside risk, missing data, and no-bet triggers.
   uncertainty.
 - Flag insufficient learning support and prevent history notes from being
   treated as proof.
-- Downgrade candidates with missing reference odds or weak research support.
+- Downgrade candidates with missing, stale, thin, or disagreeing reference odds
+  or weak research support.
 - Downgrade or question candidates when injury/suspension, motivation,
   schedule/travel, or market risk is unresolved in the supplied report.
 - Ensure the report never implies a guaranteed win.

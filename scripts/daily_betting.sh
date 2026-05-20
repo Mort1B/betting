@@ -27,7 +27,16 @@ MAX_RESEARCH_PAGES="${BETTING_MAX_RESEARCH_PAGES:-13}"
 NT_EVENTS_PER_SPORT="${BETTING_NT_EVENTS_PER_SPORT:-35}"
 RESEARCH_SOURCES="${BETTING_RESEARCH_SOURCES:-$REPO_DIR/examples/football_research_sources.txt}"
 REFERENCE_ODDS_CSV="${BETTING_REFERENCE_ODDS_CSV:-}"
+ODDS_API_KEY="${BETTING_ODDS_API_KEY:-}"
+ODDS_API_SPORTS="${BETTING_ODDS_API_SPORTS:-soccer_norway_eliteserien,soccer_sweden_allsvenskan,soccer_denmark_superliga,soccer_finland_veikkausliiga,soccer_usa_mls}"
+ODDS_API_REGIONS="${BETTING_ODDS_API_REGIONS:-eu}"
+ODDS_API_MARKETS="${BETTING_ODDS_API_MARKETS:-h2h}"
+ODDS_API_BOOKMAKERS="${BETTING_ODDS_API_BOOKMAKERS:-unibet_se,pinnacle,betfair_ex_eu,betsson,williamhill}"
+ODDS_API_COMMENCE_FROM="${BETTING_ODDS_API_COMMENCE_FROM:-}"
+ODDS_API_COMMENCE_TO="${BETTING_ODDS_API_COMMENCE_TO:-}"
+ODDS_API_EVENT_ODDS_LIMIT="${BETTING_ODDS_API_EVENT_ODDS_LIMIT:-2}"
 DELIVERY="${BETTING_DELIVERY:-pushover}"
+AI_MAX_OUTPUT_TOKENS="${BETTING_AI_MAX_OUTPUT_TOKENS:-3500}"
 
 default_report_date() {
   if [[ -n "${BETTING_DATE:-}" ]]; then
@@ -80,6 +89,25 @@ elif [[ -f "$REPO_DIR/reference_odds.csv" ]]; then
   REFERENCE_ARGS=(--reference-odds "$REPO_DIR/reference_odds.csv")
 fi
 
+if [[ -n "$ODDS_API_KEY" ]]; then
+  REFERENCE_ARGS+=(
+    --odds-api-key "$ODDS_API_KEY"
+    --odds-api-sports "$ODDS_API_SPORTS"
+    --odds-api-regions "$ODDS_API_REGIONS"
+    --odds-api-markets "$ODDS_API_MARKETS"
+    --odds-api-event-odds-limit "$ODDS_API_EVENT_ODDS_LIMIT"
+  )
+  if [[ -n "$ODDS_API_BOOKMAKERS" ]]; then
+    REFERENCE_ARGS+=(--odds-api-bookmakers "$ODDS_API_BOOKMAKERS")
+  fi
+  if [[ -n "$ODDS_API_COMMENCE_FROM" ]]; then
+    REFERENCE_ARGS+=(--odds-api-commence-from "$ODDS_API_COMMENCE_FROM")
+  fi
+  if [[ -n "$ODDS_API_COMMENCE_TO" ]]; then
+    REFERENCE_ARGS+=(--odds-api-commence-to "$ODDS_API_COMMENCE_TO")
+  fi
+fi
+
 SOURCE_ARGS=()
 case "$CANDIDATE_SOURCE" in
   csv)
@@ -103,4 +131,5 @@ cargo run -- "${SOURCE_ARGS[@]}" \
   --research "$RESEARCH_SOURCES" \
   --max-research-pages "$MAX_RESEARCH_PAGES" \
   "${REFERENCE_ARGS[@]}" \
+  --ai-max-output-tokens "$AI_MAX_OUTPUT_TOKENS" \
   "${DELIVERY_ARGS[@]}"

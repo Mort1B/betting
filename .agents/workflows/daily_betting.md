@@ -16,7 +16,18 @@ comparison signals.
 
 2. `Reference Odds Enrichment`
    - Optionally applies external comparison prices from `--reference-odds`.
-   - Matches by exact candidate id or normalized event, market, and selection.
+   - Optionally applies env-gated The Odds API h2h/main-market rows.
+   - Applies The Odds API totals rows only when `BETTING_ODDS_API_MARKETS`
+     explicitly includes `totals`.
+   - Applies The Odds API double-chance rows only when
+     `BETTING_ODDS_API_MARKETS` explicitly includes `double_chance`, capped by
+     `BETTING_ODDS_API_EVENT_ODDS_LIMIT`.
+   - Caps The Odds API bookmaker keys at 5, defaulting to Unibet SE, Pinnacle,
+     Betfair Exchange EU, Betsson, and William Hill.
+   - Matches by exact candidate id or normalized event, market, selection, teams,
+     and kickoff time.
+   - Prints run-level provider request and match counts without exposing the API
+     key.
    - Produces optional `reference_odds` without changing Norsk Tipping as the
      final bet price.
 
@@ -55,6 +66,8 @@ comparison signals.
 
 9. `Output Writer`
    - Writes the final report for GitHub Pages and iPhone Shortcut consumption.
+   - Must preserve every ranked candidate heading so the publisher can reject
+     partial AI output.
 
 10. `Pick History`
    - Publishes `history.jsonl` beside `today.txt`.
@@ -85,7 +98,10 @@ The GitHub Action publishes:
 
 ```text
 https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.txt
+https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/today.json
 https://mort1b.github.io/betting/<BETTING_REPORT_TOKEN>/history.jsonl
 ```
 
 The token is stored as `BETTING_REPORT_TOKEN` in GitHub Actions secrets.
+Use `today.json` for iPhone Shortcut parsing and `today.html` for the full
+readable report.

@@ -9,6 +9,7 @@ mod input;
 mod norsk_tipping;
 mod notify;
 mod reference;
+mod reference_provider;
 mod report;
 mod research;
 mod settlement;
@@ -24,7 +25,7 @@ use domain::BettingRules;
 use input::load_candidates_from_csv;
 use notify::deliver_report;
 use reference::apply_reference_odds;
-use report::render_recommendation;
+use report::{JsonReportMeta, render_recommendation, write_json_report};
 use research::{MarketResearchClient, ResearchOptions, load_sources};
 use timing::StageTimings;
 
@@ -58,13 +59,16 @@ fn main() {
     };
     timings.mark("candidate_loading");
 
-    match apply_reference_odds(candidates, &options.reference_odds) {
-        Ok(enriched) => candidates = enriched,
+    let reference_provider_notes = match apply_reference_odds(candidates, &options.reference_odds) {
+        Ok(enriched) => {
+            candidates = enriched.candidates;
+            enriched.provider_report_notes
+        }
         Err(error) => {
             eprintln!("failed to apply reference odds: {error}");
             process::exit(1);
         }
-    }
+    };
     timings.mark("reference_enrichment");
 
     let research_digest = match load_research(&options.research) {
@@ -98,18 +102,45 @@ fn main() {
     }
     timings.mark("history_write");
 
-    let deterministic_report = render_recommendation(&options.rules, &recommendation);
+    let deterministic_report =
+        render_recommendation(&options.rules, &recommendation, &reference_provider_notes);
     timings.mark("report_render");
 
+    let mut ai_used = false;
+    let mut ai_fallback_reason = None;
     let report = match run_ai_workflow(&deterministic_report, &options.ai) {
-        Ok(Some(ai_report)) => ai_report.final_output,
-        Ok(None) => deterministic_report,
+        Ok(Some(ai_report)) => {
+            ai_used = true;
+            ai_report.final_output
+        }
+        Ok(None) => deterministic_report.clone(),
         Err(error) => {
-            eprintln!("failed to run OpenAI agent workflow: {error}");
-            process::exit(1);
+            let reason = format!(
+                "OpenAI workflow unavailable; deterministic report published: {}",
+                public_error(&error)
+            );
+            eprintln!("{reason}");
+            ai_fallback_reason = Some(reason.clone());
+            format!("{deterministic_report}\nAI review note: {reason}\n")
         }
     };
     timings.mark("ai_review");
+
+    if let Ok(path) = env::var("BETTING_JSON_OUTPUT") {
+        let meta = JsonReportMeta {
+            final_text_report: report.clone(),
+            deterministic_text_report: deterministic_report,
+            ai_enabled: options.ai.enabled,
+            ai_used,
+            ai_fallback_reason,
+            reference_provider_notes,
+        };
+        if let Err(error) = write_json_report(&path, &options.rules, &recommendation, &meta) {
+            eprintln!("{error}");
+            process::exit(1);
+        }
+    }
+    timings.mark("json_report_write");
 
     println!("{report}");
 
@@ -125,6 +156,12 @@ fn main() {
     }
     timings.mark("delivery");
     timings.finish();
+}
+
+fn public_error(error: &str) -> String {
+    error
+        .replace("OPENAI_API_KEY", "OpenAI API key")
+        .replace("BETTING_ODDS_API_KEY", "Odds API key")
 }
 
 fn load_candidates(

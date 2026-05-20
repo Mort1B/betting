@@ -2,21 +2,49 @@ use std::collections::HashMap;
 use std::fs;
 
 use crate::domain::BetCandidate;
+use crate::reference_provider::{ReferenceProviderOptions, fetch_reference_provider_rows};
+
+mod notes;
+
+use notes::{append_reference_note, consensus_reference_odds};
 
 #[derive(Debug, Clone, Default)]
 pub struct ReferenceOddsOptions {
     pub source_path: Option<String>,
+    pub providers: ReferenceProviderOptions,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReferenceOddsResult {
+    pub candidates: Vec<BetCandidate>,
+    pub provider_report_notes: Vec<String>,
 }
 
 pub fn apply_reference_odds(
     candidates: Vec<BetCandidate>,
     options: &ReferenceOddsOptions,
-) -> Result<Vec<BetCandidate>, String> {
-    let Some(path) = options.source_path.as_deref() else {
-        return Ok(candidates);
-    };
-    let rows = load_reference_rows(path)?;
-    Ok(enrich_candidates(candidates, &rows))
+) -> Result<ReferenceOddsResult, String> {
+    let mut rows = Vec::new();
+    if let Some(path) = options.source_path.as_deref() {
+        rows.extend(load_reference_rows(path)?);
+    }
+
+    let provider_output = fetch_reference_provider_rows(&candidates, &options.providers);
+    let provider_report_notes =
+        provider_report_notes(provider_output.summaries, provider_output.notes);
+    rows.extend(provider_output.rows);
+
+    if rows.is_empty() {
+        return Ok(ReferenceOddsResult {
+            candidates,
+            provider_report_notes,
+        });
+    }
+
+    Ok(ReferenceOddsResult {
+        candidates: enrich_candidates(candidates, &rows),
+        provider_report_notes,
+    })
 }
 
 fn load_reference_rows(path: &str) -> Result<Vec<ReferenceOddsRow>, String> {
@@ -105,16 +133,16 @@ fn parse_row(headers: &HashMap<String, usize>, row: &[String]) -> Result<Referen
 }
 
 #[derive(Debug, Clone, PartialEq)]
-struct ReferenceOddsRow {
-    candidate_id: Option<String>,
-    sport: Option<String>,
-    competition: Option<String>,
-    event: Option<String>,
-    market: Option<String>,
-    selection: Option<String>,
-    reference_odds: f64,
-    source: String,
-    notes: Option<String>,
+pub(crate) struct ReferenceOddsRow {
+    pub(crate) candidate_id: Option<String>,
+    pub(crate) sport: Option<String>,
+    pub(crate) competition: Option<String>,
+    pub(crate) event: Option<String>,
+    pub(crate) market: Option<String>,
+    pub(crate) selection: Option<String>,
+    pub(crate) reference_odds: f64,
+    pub(crate) source: String,
+    pub(crate) notes: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -211,43 +239,9 @@ fn optional_normalized_match(reference: Option<&str>, normalized_candidate_value
     reference.is_none_or(|value| normalize_key(value) == normalized_candidate_value)
 }
 
-fn consensus_reference_odds(rows: &[&ReferenceOddsRow]) -> f64 {
-    let average_probability =
-        rows.iter().map(|row| 1.0 / row.reference_odds).sum::<f64>() / rows.len() as f64;
-    round_to_two_decimals(1.0 / average_probability)
-}
-
-fn append_reference_note(
-    candidate: &mut BetCandidate,
-    matches: &[&ReferenceOddsRow],
-    reference_odds: f64,
-) {
-    let sources = matches
-        .iter()
-        .take(4)
-        .map(|row| format!("{} {:.2}", row.source, row.reference_odds))
-        .collect::<Vec<_>>()
-        .join("; ");
-    let mut note = format!(
-        "reference odds consensus {:.2} from {} source(s): {}",
-        reference_odds,
-        matches.len(),
-        sources
-    );
-    let row_notes = matches
-        .iter()
-        .filter_map(|row| row.notes.as_deref())
-        .take(2)
-        .collect::<Vec<_>>();
-    if !row_notes.is_empty() {
-        note.push_str(&format!("; notes: {}", row_notes.join("; ")));
-    }
-
-    if candidate.notes.trim().is_empty() {
-        candidate.notes = note;
-    } else {
-        candidate.notes = format!("{}; {}", candidate.notes, note);
-    }
+fn provider_report_notes(mut summaries: Vec<String>, mut notes: Vec<String>) -> Vec<String> {
+    summaries.append(&mut notes);
+    summaries
 }
 
 fn normalize_key(value: &str) -> String {

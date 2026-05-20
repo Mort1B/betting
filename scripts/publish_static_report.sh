@@ -7,9 +7,18 @@ PUBLIC_DIR="${BETTING_PUBLIC_DIR:-$REPO_DIR/public}"
 INPUT_CSV="${BETTING_INPUT_CSV:-$REPO_DIR/examples/norsk_tipping_candidates.csv}"
 RESEARCH_SOURCES="${BETTING_RESEARCH_SOURCES:-$REPO_DIR/examples/football_research_sources.txt}"
 REFERENCE_ODDS_CSV="${BETTING_REFERENCE_ODDS_CSV:-}"
+ODDS_API_KEY="${BETTING_ODDS_API_KEY:-}"
+ODDS_API_SPORTS="${BETTING_ODDS_API_SPORTS:-soccer_norway_eliteserien,soccer_sweden_allsvenskan,soccer_denmark_superliga,soccer_finland_veikkausliiga,soccer_usa_mls}"
+ODDS_API_REGIONS="${BETTING_ODDS_API_REGIONS:-eu}"
+ODDS_API_MARKETS="${BETTING_ODDS_API_MARKETS:-h2h}"
+ODDS_API_BOOKMAKERS="${BETTING_ODDS_API_BOOKMAKERS:-unibet_se,pinnacle,betfair_ex_eu,betsson,williamhill}"
+ODDS_API_COMMENCE_FROM="${BETTING_ODDS_API_COMMENCE_FROM:-}"
+ODDS_API_COMMENCE_TO="${BETTING_ODDS_API_COMMENCE_TO:-}"
+ODDS_API_EVENT_ODDS_LIMIT="${BETTING_ODDS_API_EVENT_ODDS_LIMIT:-2}"
 REPORT_TOKEN="${BETTING_REPORT_TOKEN:-${REPORT_TOKEN:-}}"
 ENABLE_AI="${BETTING_ENABLE_AI:-false}"
 OPENAI_MODEL="${BETTING_OPENAI_MODEL:-gpt-5.5}"
+AI_MAX_OUTPUT_TOKENS="${BETTING_AI_MAX_OUTPUT_TOKENS:-3500}"
 CANDIDATE_SOURCE="${BETTING_CANDIDATE_SOURCE:-norsk-tipping-live}"
 SPORT_SCOPE="${BETTING_SPORT_SCOPE:-football}"
 PICK_COUNT="${BETTING_PICK_COUNT:-5}"
@@ -46,6 +55,8 @@ fi
 REPORT_DIR="$PUBLIC_DIR/$REPORT_TOKEN"
 TODAY_REPORT="$REPORT_DIR/today.txt"
 DATED_REPORT="$REPORT_DIR/$TODAY.txt"
+TODAY_JSON="$REPORT_DIR/today.json"
+DATED_JSON="$REPORT_DIR/$TODAY.json"
 HISTORY_REPORT="$REPORT_DIR/history.jsonl"
 HISTORY_INPUT="$(mktemp "${TMPDIR:-/tmp}/betting-history.XXXXXX.jsonl")"
 HISTORY_URL="${BETTING_HISTORY_URL:-https://mort1b.github.io/betting/$REPORT_TOKEN/history.jsonl}"
@@ -55,7 +66,7 @@ cd "$REPO_DIR"
 
 AI_ARGS=()
 if [[ "$ENABLE_AI" == "true" || "$ENABLE_AI" == "1" ]]; then
-  AI_ARGS=(--ai --openai-model "$OPENAI_MODEL")
+  AI_ARGS=(--ai --openai-model "$OPENAI_MODEL" --ai-max-output-tokens "$AI_MAX_OUTPUT_TOKENS")
 fi
 
 case "$DELIVERY" in
@@ -82,6 +93,25 @@ elif [[ -f "$REPO_DIR/reference_odds.csv" ]]; then
   REFERENCE_ARGS=(--reference-odds "$REPO_DIR/reference_odds.csv")
 fi
 
+if [[ -n "$ODDS_API_KEY" ]]; then
+  REFERENCE_ARGS+=(
+    --odds-api-key "$ODDS_API_KEY"
+    --odds-api-sports "$ODDS_API_SPORTS"
+    --odds-api-regions "$ODDS_API_REGIONS"
+    --odds-api-markets "$ODDS_API_MARKETS"
+    --odds-api-event-odds-limit "$ODDS_API_EVENT_ODDS_LIMIT"
+  )
+  if [[ -n "$ODDS_API_BOOKMAKERS" ]]; then
+    REFERENCE_ARGS+=(--odds-api-bookmakers "$ODDS_API_BOOKMAKERS")
+  fi
+  if [[ -n "$ODDS_API_COMMENCE_FROM" ]]; then
+    REFERENCE_ARGS+=(--odds-api-commence-from "$ODDS_API_COMMENCE_FROM")
+  fi
+  if [[ -n "$ODDS_API_COMMENCE_TO" ]]; then
+    REFERENCE_ARGS+=(--odds-api-commence-to "$ODDS_API_COMMENCE_TO")
+  fi
+fi
+
 SOURCE_ARGS=()
 case "$CANDIDATE_SOURCE" in
   csv)
@@ -104,7 +134,7 @@ else
   : > "$HISTORY_INPUT"
 fi
 
-BETTING_HISTORY_INPUT="$HISTORY_INPUT" BETTING_HISTORY_OUTPUT="$HISTORY_REPORT" cargo run -- "${SOURCE_ARGS[@]}" \
+BETTING_HISTORY_INPUT="$HISTORY_INPUT" BETTING_HISTORY_OUTPUT="$HISTORY_REPORT" BETTING_JSON_OUTPUT="$TODAY_JSON" cargo run -- "${SOURCE_ARGS[@]}" \
   --date "$TODAY" \
   --sport-scope "$SPORT_SCOPE" \
   --pick-count "$PICK_COUNT" \
@@ -118,6 +148,7 @@ BETTING_HISTORY_INPUT="$HISTORY_INPUT" BETTING_HISTORY_OUTPUT="$HISTORY_REPORT" 
   > "$TODAY_REPORT"
 
 cp "$TODAY_REPORT" "$DATED_REPORT"
+cp "$TODAY_JSON" "$DATED_JSON"
 
 cat > "$PUBLIC_DIR/index.html" <<'HTML'
 <!doctype html>
@@ -134,17 +165,89 @@ cat > "$PUBLIC_DIR/index.html" <<'HTML'
 </html>
 HTML
 
+cat > "$REPORT_DIR/today.html" <<'HTML'
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Daily Betting Report</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 20px;
+        line-height: 1.45;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.25rem;
+      }
+      a {
+        margin-right: 12px;
+      }
+      pre {
+        max-width: 100%;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font: 0.9rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Daily Betting Report</h1>
+      <nav>
+        <a href="./today.txt">Text</a>
+        <a href="./today.json">JSON</a>
+        <a href="./history.jsonl">History</a>
+      </nav>
+    </header>
+    <pre id="report">Loading report...</pre>
+    <script>
+      fetch("./today.txt", { cache: "no-store" })
+        .then((response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.text();
+        })
+        .then((text) => {
+          document.getElementById("report").textContent = text;
+        })
+        .catch((error) => {
+          document.getElementById("report").textContent =
+            `Could not load today.txt: ${error.message}`;
+        });
+    </script>
+  </body>
+</html>
+HTML
+
 cat > "$REPORT_DIR/index.html" <<HTML
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="robots" content="noindex,nofollow">
-    <meta http-equiv="refresh" content="0; url=./today.txt">
+    <meta http-equiv="refresh" content="0; url=./today.html">
     <title>Daily Betting Report</title>
   </head>
   <body>
-    <p><a href="./today.txt">Open today's betting report</a></p>
+    <p><a href="./today.html">Open today's betting report</a></p>
+    <p><a href="./today.json">Open today's betting JSON</a></p>
   </body>
 </html>
 HTML
+
+bash "$REPO_DIR/scripts/validate_static_report.sh" "$REPORT_DIR"
