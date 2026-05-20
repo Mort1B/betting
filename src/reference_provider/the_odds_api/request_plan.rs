@@ -99,7 +99,7 @@ pub(super) fn clean_sport_keys(sport_keys: Vec<String>) -> Vec<String> {
         .filter(|sport| !sport.is_empty())
         .collect::<Vec<_>>();
     if cleaned.is_empty() {
-        vec!["soccer_norway_eliteserien".to_string()]
+        vec!["auto".to_string()]
     } else {
         cleaned
     }

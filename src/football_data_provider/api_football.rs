@@ -1,4 +1,5 @@
 mod context;
+mod fixtures;
 mod models;
 mod stats;
 #[cfg(test)]
@@ -87,23 +88,25 @@ impl FootballContextProvider for ApiFootballProvider {
         };
 
         let mut stats = ProviderStats::default();
-        let fixtures = match self.fetch_fixtures_by_date(&client, date, &mut stats) {
-            Ok(fixtures) => fixtures,
-            Err(error) => {
-                let candidate_count = candidates.len();
-                return FootballDataResult {
-                    candidates,
-                    provider_report_notes: vec![
-                        stats.summary(0, candidate_count),
-                        format!("API-Football fixture request failed: {error}"),
-                    ],
-                };
-            }
-        };
+        let mut notes = Vec::new();
+        let fixture_dates = fixtures::fixture_dates_for_candidates(&candidates, date);
+        let fixtures =
+            match self.fetch_fixtures_for_dates(&client, &fixture_dates, &mut stats, &mut notes) {
+                Ok(fixtures) => fixtures,
+                Err(error) => {
+                    let candidate_count = candidates.len();
+                    return FootballDataResult {
+                        candidates,
+                        provider_report_notes: vec![
+                            stats.summary(0, candidate_count),
+                            format!("API-Football fixture request failed: {error}"),
+                        ],
+                    };
+                }
+            };
 
         let mut candidates = candidates;
         let matches = match_candidates(&candidates, &fixtures);
-        let mut notes = Vec::new();
         let mut injury_cache = HashMap::new();
         let mut coverage_cache = HashMap::new();
         let mut standings_cache = HashMap::new();

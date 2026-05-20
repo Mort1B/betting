@@ -2,6 +2,7 @@ mod event_match;
 mod http;
 mod market_match;
 mod request_plan;
+mod sport_keys;
 mod time;
 
 use reqwest::blocking::Client;
@@ -163,7 +164,8 @@ impl ReferenceOddsProvider for TheOddsApiProvider {
         let mut stats = FetchStats::default();
         let requested_markets = RequestedMarkets::parse(&self.options.markets);
 
-        for sport_key in &self.options.sport_keys {
+        let sport_keys = sport_keys::resolve_sport_keys(&self.options.sport_keys, candidates);
+        for sport_key in &sport_keys {
             if let Some(featured_markets) = requested_markets.featured_query() {
                 stats.sport_odds_requests += 1;
                 match self.fetch_odds_events_for_sport(sport_key, &featured_markets) {
