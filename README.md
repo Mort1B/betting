@@ -132,8 +132,10 @@ Live source controls:
 - `BETTING_ODDS_API_BOOKMAKERS` defaults to five explicit bookmaker keys:
   `unibet_se,pinnacle,betfair_ex_eu,betsson,williamhill`. The CLI rejects more
   than five keys so the free-tier setup stays bounded.
-- `BETTING_ODDS_API_SPORTS` defaults to a small Nordic/MLS football set:
-  `soccer_norway_eliteserien,soccer_sweden_allsvenskan,soccer_denmark_superliga,soccer_finland_veikkausliiga,soccer_usa_mls`.
+- `BETTING_ODDS_API_SPORTS=auto` is the scheduled default. It infers The Odds
+  API sport keys from the current Norsk Tipping candidate competitions so the
+  run does not spend credits on unrelated leagues. Explicit keys still work, and
+  can be combined with `auto`.
 - `BETTING_ODDS_API_REGIONS=eu`, `BETTING_ODDS_API_MARKETS=h2h`, and
   `BETTING_ODDS_API_BOOKMAKERS` customize provider requests. Scheduled runs keep
   `h2h` as the default to conserve free-tier credits. Use
@@ -145,9 +147,10 @@ Live source controls:
 - `BETTING_ODDS_API_EVENT_ODDS_LIMIT=2` caps event-level odds requests used for
   `double_chance`. This is a total cap per run, not per bookmaker.
 - `BETTING_FOOTBALL_DATA_API_KEY=...` enables API-Football context enrichment.
-  It matches same-day fixtures by normalized teams and kickoff time, checks
-  league-season coverage, then adds bounded form, injury/suspension,
-  schedule/rest, and standings motivation notes before scoring.
+  It fetches the report date plus actual candidate kickoff dates, matches
+  fixtures by normalized teams and kickoff time, checks league-season coverage,
+  then adds bounded form, injury/suspension, schedule/rest, and standings
+  motivation notes before scoring.
 - `BETTING_API_FOOTBALL_MAX_FIXTURES=2` caps matched fixtures enriched with
   injury and context calls. `BETTING_API_FOOTBALL_MAX_FORM_TEAMS=4` caps recent
   team-form calls. These defaults keep scheduled API usage small.
@@ -194,11 +197,12 @@ and match decimal `totals` odds for Norsk Tipping over/under selections when
 `BETTING_ODDS_API_MARKETS` includes `totals`. It can request event-level
 `double_chance` odds for matched candidate events when
 `BETTING_ODDS_API_MARKETS` includes `double_chance`, capped by
-`BETTING_ODDS_API_EVENT_ODDS_LIMIT`. It can use The Odds API sport keys
-documented at
-`https://the-odds-api.com/liveapi/guides/v4/`. The default bookmaker keys are
-based on the official The Odds API bookmaker list, using the Nordic Unibet key
-plus Pinnacle, Betfair Exchange, Betsson, and William Hill.
+`BETTING_ODDS_API_EVENT_ODDS_LIMIT`. `BETTING_ODDS_API_SPORTS=auto` maps common
+Norsk Tipping competition names to The Odds API sport keys documented at
+`https://the-odds-api.com/sports-odds-data/sports-apis.html`, including Copa
+Libertadores, Copa Sudamericana, and FIFA World Cup fixtures. The default
+bookmaker keys are based on the official The Odds API bookmaker list, using the
+Nordic Unibet key plus Pinnacle, Betfair Exchange, Betsson, and William Hill.
 
 ## Candidate CSV Fallback
 

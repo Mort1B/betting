@@ -45,6 +45,9 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Uses explicit bookmaker keys by default:
   `unibet_se,pinnacle,betfair_ex_eu,betsson,williamhill`.
 - Rejects `--odds-api-bookmakers` overrides with more than 5 keys.
+- Uses `BETTING_ODDS_API_SPORTS=auto` in scheduled runs to infer The Odds API
+  sport keys from current candidate competitions instead of polling a fixed
+  league set.
 - Matches by exact `candidate_id`, or by normalized `event`, `market`, and
   `selection` with optional `sport` and `competition` constraints.
 - The provider pre-matches API events by normalized teams, kickoff time, market
@@ -66,8 +69,8 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Is disabled unless `BETTING_FOOTBALL_DATA_API_KEY` is configured.
 - Uses the API-Football provider when
   `BETTING_FOOTBALL_DATA_PROVIDER=api_football`.
-- Fetches same-day fixtures once, then matches candidates by normalized teams and
-  kickoff time.
+- Fetches the report date plus actual candidate kickoff dates, then matches
+  candidates by normalized teams and kickoff time.
 - Checks `/leagues` coverage by league-season before spending downstream
   context calls.
 - Fetches injuries by matched fixture only when injury coverage is confirmed,
