@@ -115,6 +115,85 @@ fn matches_provider_team_suffixes_and_diacritics() {
 }
 
 #[test]
+fn matches_norwegian_nation_names_to_provider_names() {
+    let events = parse_events(
+        r#"[
+          {
+            "id": "fixture-germany-ivory-coast",
+            "sport_title": "FIFA World Cup",
+            "commence_time": "2026-06-11T19:00:00Z",
+            "home_team": "Germany",
+            "away_team": "Ivory Coast",
+            "bookmakers": [
+              {
+                "title": "Book A",
+                "markets": [
+                  {
+                    "key": "h2h",
+                    "outcomes": [
+                      {"name": "Germany", "price": 1.44},
+                      {"name": "Draw", "price": 4.20},
+                      {"name": "Ivory Coast", "price": 6.20}
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "fixture-south-korea-united-states",
+            "sport_title": "FIFA World Cup",
+            "commence_time": "2026-06-12T18:00:00Z",
+            "home_team": "South Korea",
+            "away_team": "United States",
+            "bookmakers": [
+              {
+                "title": "Book A",
+                "markets": [
+                  {
+                    "key": "h2h",
+                    "outcomes": [
+                      {"name": "South Korea", "price": 2.90},
+                      {"name": "Draw", "price": 3.10},
+                      {"name": "United States", "price": 2.35}
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]"#,
+    )
+    .expect("fixture JSON");
+    let mut germany = candidate();
+    germany.id = "nt-tyskland".to_string();
+    germany.competition = "VM".to_string();
+    germany.event = "Tyskland - Elfenbenskysten".to_string();
+    germany.selection = "Tyskland".to_string();
+    germany.starts_at = "2026-06-11T21:00:00+02:00".to_string();
+    let mut usa = candidate();
+    usa.id = "nt-usa".to_string();
+    usa.competition = "VM".to_string();
+    usa.event = "Sør-Korea - USA".to_string();
+    usa.selection = "USA".to_string();
+    usa.starts_at = "2026-06-12T20:00:00+02:00".to_string();
+
+    let rows = reference_rows_from_events(&[germany, usa], &events);
+
+    assert_eq!(rows.len(), 2);
+    assert!(
+        rows.iter()
+            .any(|row| row.candidate_id.as_deref() == Some("nt-tyskland")
+                && (row.reference_odds - 1.44).abs() < 0.001)
+    );
+    assert!(
+        rows.iter()
+            .any(|row| row.candidate_id.as_deref() == Some("nt-usa")
+                && (row.reference_odds - 2.35).abs() < 0.001)
+    );
+}
+
+#[test]
 fn maps_fixture_totals_odds_when_market_is_enabled() {
     let events =
         parse_events(include_str!("../../../fixtures/the_odds_api_h2h.json")).expect("fixture");
