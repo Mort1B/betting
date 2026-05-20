@@ -1,6 +1,9 @@
-use crate::domain::BetCandidate;
+use std::collections::HashSet;
 
-use super::{ApiFixture, ApiFootballProvider, ProviderStats};
+use crate::domain::BetCandidate;
+use crate::football_data_provider::append_candidate_note;
+
+use super::{ApiFixture, ApiFootballProvider, ProviderStats, context::CandidateFixtureMatch};
 
 const MAX_FIXTURE_DATES: usize = 3;
 
@@ -22,6 +25,27 @@ pub(super) fn fixture_dates_for_candidates(
     }
 
     dates
+}
+
+pub(super) fn append_unmatched_fixture_notes(
+    candidates: &mut [BetCandidate],
+    matches: &[CandidateFixtureMatch],
+    date_count: usize,
+) {
+    let matched_candidate_indexes = matches
+        .iter()
+        .map(|candidate_match| candidate_match.candidate_index)
+        .collect::<HashSet<_>>();
+    for (index, candidate) in candidates.iter_mut().enumerate() {
+        if !matched_candidate_indexes.contains(&index) {
+            append_candidate_note(
+                candidate,
+                format!(
+                    "API-Football fixture not matched: no provider fixture matched teams/start across {date_count} fixture date(s)"
+                ),
+            );
+        }
+    }
 }
 
 impl ApiFootballProvider {

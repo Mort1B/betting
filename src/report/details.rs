@@ -33,7 +33,9 @@ fn push_candidate_details(output: &mut String, candidate: &EvaluatedCandidate) {
             price_comparison(candidate.candidate.norsk_tipping_odds, reference_odds)
         ));
     } else {
-        output.push_str("Reference market odds: not used\n");
+        output.push_str(
+            "Reference market odds: not used (no candidate-level reference price matched)\n",
+        );
     }
     output.push_str(&format!(
         "Estimated probability: {:.2}%\n",

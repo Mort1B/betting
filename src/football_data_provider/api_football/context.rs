@@ -108,6 +108,14 @@ pub(super) fn append_form_notes(
         };
         if let Some(note) = form_note(team.id, &team.name, &fixture.fixture.date, fixtures) {
             append_candidate_note(candidate, note);
+        } else {
+            append_candidate_note(
+                candidate,
+                format!(
+                    "API-Football form checked: no completed recent fixture data for {}",
+                    team.name
+                ),
+            );
         }
     }
 }
@@ -121,6 +129,15 @@ pub(super) fn append_standings_notes(
         if let Some(note) = standings_note(team.id, &team.name, standings) {
             append_candidate_note(candidate, note);
         }
+    }
+    if standings.is_empty() {
+        append_candidate_note(
+            candidate,
+            format!(
+                "API-Football table checked: no standings rows returned for {}",
+                fixture.league.name
+            ),
+        );
     }
 }
 
@@ -259,7 +276,11 @@ fn form_note(
             note.push_str("; short rest");
         } else if last_played >= 6 {
             note.push_str("; full week rest");
+        } else {
+            note.push_str("; schedule checked no short-rest signal");
         }
+    } else {
+        note.push_str("; schedule checked no rest-day signal");
     }
     Some(note)
 }

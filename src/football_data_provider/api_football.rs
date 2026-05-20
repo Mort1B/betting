@@ -107,6 +107,7 @@ impl FootballContextProvider for ApiFootballProvider {
 
         let mut candidates = candidates;
         let matches = match_candidates(&candidates, &fixtures);
+        fixtures::append_unmatched_fixture_notes(&mut candidates, &matches, fixture_dates.len());
         let mut injury_cache = HashMap::new();
         let mut coverage_cache = HashMap::new();
         let mut standings_cache = HashMap::new();

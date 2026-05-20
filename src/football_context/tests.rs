@@ -118,6 +118,73 @@ fn uses_specific_european_table_context_from_candidate_notes() {
     assert_eq!(motivation.status, FootballContextStatus::Positive);
 }
 
+#[test]
+fn explains_unknown_api_context_when_fixture_does_not_match() {
+    let assessment = assess_football_context(
+        &candidate("API-Football fixture not matched: no provider fixture matched teams/start"),
+        None,
+    );
+
+    let form = assessment
+        .categories
+        .iter()
+        .find(|category| category.name == "Form")
+        .expect("form category");
+    let market = assessment
+        .categories
+        .iter()
+        .find(|category| category.name == "Market context")
+        .expect("market category");
+
+    assert_eq!(form.status, FootballContextStatus::Unknown);
+    assert!(
+        form.evidence
+            .iter()
+            .any(|evidence| evidence.contains("fixture not matched"))
+    );
+    assert!(
+        market
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("no candidate-level reference price matched"))
+    );
+}
+
+#[test]
+fn explains_unknown_api_context_when_coverage_is_missing() {
+    let assessment = assess_football_context(
+        &candidate(
+            "API-Football fixture matched: Home vs Away; API-Football availability coverage not confirmed; API-Football table coverage unavailable; API-Football form checked: no completed recent fixture data",
+        ),
+        None,
+    );
+
+    let injuries = assessment
+        .categories
+        .iter()
+        .find(|category| category.name == "Injuries/suspensions")
+        .expect("injury category");
+    let motivation = assessment
+        .categories
+        .iter()
+        .find(|category| category.name == "Motivation")
+        .expect("motivation category");
+
+    assert_eq!(injuries.status, FootballContextStatus::Unknown);
+    assert!(
+        injuries
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("coverage not confirmed"))
+    );
+    assert!(
+        motivation
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("coverage unavailable"))
+    );
+}
+
 fn candidate(notes: &str) -> BetCandidate {
     BetCandidate {
         id: "c1".to_string(),
