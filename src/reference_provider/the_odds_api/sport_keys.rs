@@ -69,6 +69,15 @@ const SPORT_KEY_MAPPINGS: &[SportKeyMapping] = &[
     },
     SportKeyMapping {
         patterns: &[
+            "international friendly",
+            "international friendlies",
+            "internasjonal privatlandskamp",
+            "privatlandskamp",
+        ],
+        sport_key: "soccer_international_friendlies",
+    },
+    SportKeyMapping {
+        patterns: &[
             "fifa world cup",
             "world cup",
             "fotball vm",
@@ -334,6 +343,19 @@ mod tests {
                 "soccer_fifa_world_cup_qualifiers_europe".to_string(),
                 "soccer_fifa_world_cup_qualifiers_south_america".to_string()
             ]
+        );
+    }
+
+    #[test]
+    fn auto_infers_international_friendlies() {
+        let sport_keys = resolve_sport_keys(
+            &["auto".to_string()],
+            &[candidate("Internasjonal Privatlandskamp")],
+        );
+
+        assert_eq!(
+            sport_keys,
+            vec!["soccer_international_friendlies".to_string()]
         );
     }
 }

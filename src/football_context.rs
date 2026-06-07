@@ -130,6 +130,14 @@ fn collect_matches(
         if !text.contains(keyword) {
             continue;
         }
+        if should_skip_match(&category.name, text, status, keyword) {
+            continue;
+        }
+        if category.status == FootballContextStatus::Warning
+            && status != FootballContextStatus::Warning
+        {
+            continue;
+        }
         if category.status != FootballContextStatus::Warning {
             category.status = status;
         }
@@ -139,6 +147,23 @@ fn collect_matches(
                 .push(format!("{source}: {} {keyword}", status.label()));
         }
     }
+}
+
+fn should_skip_match(
+    category_name: &str,
+    text: &str,
+    status: FootballContextStatus,
+    keyword: &str,
+) -> bool {
+    category_name == "Injuries/suspensions"
+        && status == FootballContextStatus::Warning
+        && keyword == "injury"
+        && INJURY_NEGATION_PHRASES
+            .iter()
+            .any(|phrase| text.contains(phrase))
+        && !INJURY_HARD_WARNING_PHRASES
+            .iter()
+            .any(|phrase| text.contains(phrase))
 }
 
 fn candidate_terms(candidate: &BetCandidate) -> Vec<String> {
@@ -207,13 +232,20 @@ fn context_window(text: &str, terms: &[String]) -> String {
 const CATEGORY_RULES: &[CategoryRule] = &[
     CategoryRule {
         name: "Form",
-        positive: &["good form", "strong form", "unbeaten", "winning run"],
+        positive: &[
+            "good form",
+            "strong form",
+            "unbeaten",
+            "winning run",
+            "opponent vulnerable form",
+        ],
         warning: &[
             "poor form",
             "bad form",
             "winless",
             "struggling",
             "lost last",
+            "opponent strong form",
         ],
     },
     CategoryRule {
@@ -224,8 +256,10 @@ const CATEGORY_RULES: &[CategoryRule] = &[
             "no listed absences",
             "clean bill",
             "key player returns",
+            "opponent absences",
         ],
         warning: &[
+            "selected team absences",
             "injury",
             "injured",
             "doubtful",
@@ -253,6 +287,7 @@ const CATEGORY_RULES: &[CategoryRule] = &[
             "nothing to play",
             "already qualified",
             "already relegated",
+            "opponent motivation risk",
         ],
     },
     CategoryRule {
@@ -287,4 +322,20 @@ const CATEGORY_RULES: &[CategoryRule] = &[
             "single reference source",
         ],
     },
+];
+
+const INJURY_NEGATION_PHRASES: &[&str] = &[
+    "no fresh injury",
+    "no listed absences",
+    "clean bill",
+    "full squad",
+];
+
+const INJURY_HARD_WARNING_PHRASES: &[&str] = &[
+    "injured",
+    "doubtful",
+    "suspended",
+    "suspension",
+    "ruled out",
+    "selected team absences",
 ];

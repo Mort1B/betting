@@ -1,6 +1,7 @@
 use reqwest::blocking::Client;
 use reqwest::header::{ACCEPT, ACCEPT_LANGUAGE, HeaderMap, HeaderValue};
 use scraper::{Html, Selector};
+use std::io::Read;
 use std::process::Command;
 use std::thread;
 use std::time::Duration;
@@ -10,6 +11,7 @@ use super::reddit::{listing_pages, thread_search_pages};
 use super::source::{ResearchOptions, ResearchSource, ResearchSourceKind};
 
 const MAX_PARALLEL_FETCHES: usize = 4;
+const MAX_RESEARCH_BODY_BYTES: u64 = 1_500_000;
 const USER_AGENT: &str = "betting-daily-agent/0.1 by local-user";
 
 #[derive(Debug, Clone)]
@@ -116,9 +118,7 @@ impl MarketResearchClient {
             return Err(format!("{url} returned {}", response.status()));
         }
 
-        response
-            .text()
-            .map_err(|error| format!("{url} body read failed: {error}"))
+        read_limited_body(response, url, MAX_RESEARCH_BODY_BYTES)
     }
 
     fn fetch_reddit_body(&self, url: &str) -> Result<String, String> {
@@ -132,6 +132,7 @@ impl MarketResearchClient {
 }
 
 fn curl_fetch_body(url: &str) -> Result<String, String> {
+    let max_size = MAX_RESEARCH_BODY_BYTES.to_string();
     let output = Command::new("curl")
         .args([
             "-L",
@@ -140,6 +141,8 @@ fn curl_fetch_body(url: &str) -> Result<String, String> {
             "--show-error",
             "--max-time",
             "20",
+            "--max-filesize",
+            &max_size,
             "-A",
             USER_AGENT,
             url,
@@ -151,8 +154,30 @@ fn curl_fetch_body(url: &str) -> Result<String, String> {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!("curl exited {}: {}", output.status, stderr.trim()));
     }
+    if output.stdout.len() > MAX_RESEARCH_BODY_BYTES as usize {
+        return Err(format!(
+            "response exceeded {} byte limit",
+            MAX_RESEARCH_BODY_BYTES
+        ));
+    }
 
     String::from_utf8(output.stdout).map_err(|error| format!("curl output was not UTF-8: {error}"))
+}
+
+fn read_limited_body(
+    response: reqwest::blocking::Response,
+    url: &str,
+    max_bytes: u64,
+) -> Result<String, String> {
+    let mut limited = response.take(max_bytes + 1);
+    let mut bytes = Vec::new();
+    limited
+        .read_to_end(&mut bytes)
+        .map_err(|error| format!("{url} body read failed: {error}"))?;
+    if bytes.len() as u64 > max_bytes {
+        return Err(format!("{url} exceeded {max_bytes} byte response limit"));
+    }
+    String::from_utf8(bytes).map_err(|error| format!("{url} body was not UTF-8: {error}"))
 }
 
 fn flatten_ordered_pages(mut indexed_pages: Vec<(usize, Vec<ResearchPage>)>) -> Vec<ResearchPage> {

@@ -1,6 +1,6 @@
 use crate::domain::BetCandidate;
+use crate::team_name::{names_match, normalize_tokens};
 
-use super::name_match::{names_match, normalize_tokens};
 use super::{TheOddsApiMarket, TheOddsApiOutcome};
 
 pub(super) fn candidate_matches_market_outcome(

@@ -1,8 +1,8 @@
 use crate::domain::BetCandidate;
 use crate::reference::ReferenceOddsRow;
+use crate::team_name::{comparable_name, names_match};
 
 use super::market_match::{candidate_matches_market_outcome, candidate_supports_market_key};
-use super::name_match::{comparable_name, names_match};
 use super::time::iso_to_utc_minutes;
 use super::{
     START_TOLERANCE_MINUTES, TheOddsApiBookmaker, TheOddsApiEvent, TheOddsApiMarket,

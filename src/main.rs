@@ -14,6 +14,7 @@ mod reference_provider;
 mod report;
 mod research;
 mod settlement;
+mod team_name;
 mod timing;
 
 use std::env;

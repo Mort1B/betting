@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::domain::BetCandidate;
 use crate::football_data_provider::append_candidate_note;
+use crate::team_name::{comparable_name, names_match, normalize_tokens};
 
 use super::models::{ApiFixture, ApiInjury, ApiStandingRow};
 use super::time::iso_to_utc_minutes;
@@ -12,12 +13,16 @@ pub(super) struct CandidateFixtureMatch {
     pub(super) fixture_index: usize,
 }
 
-pub(super) fn match_candidates(
+pub(super) fn match_candidate_indexes(
     candidates: &[BetCandidate],
+    candidate_indexes: &[usize],
     fixtures: &[ApiFixture],
 ) -> Vec<CandidateFixtureMatch> {
     let mut matches = Vec::new();
-    for (candidate_index, candidate) in candidates.iter().enumerate() {
+    for &candidate_index in candidate_indexes {
+        let Some(candidate) = candidates.get(candidate_index) else {
+            continue;
+        };
         if let Some((fixture_index, _)) = fixtures
             .iter()
             .enumerate()
@@ -62,21 +67,43 @@ pub(super) fn append_injury_notes(
         return;
     }
 
-    let summary = injuries
-        .iter()
-        .take(4)
-        .map(|injury| {
+    let selected_team = selected_team_id(candidate, fixture);
+    let mut selected_absences = Vec::new();
+    let mut opponent_absences = Vec::new();
+    let mut neutral_absences = Vec::new();
+
+    for injury in injuries.iter().take(4) {
+        match team_relation(injury.team.id, selected_team) {
+            TeamRelation::Selected => selected_absences.push(selected_absence_summary(injury)),
+            TeamRelation::Opponent => opponent_absences.push(opponent_absence_summary(injury)),
+            TeamRelation::Neutral => neutral_absences.push(selected_absence_summary(injury)),
+        }
+    }
+
+    if !selected_absences.is_empty() {
+        append_candidate_note(
+            candidate,
             format!(
-                "{} {} {} {}",
-                injury.team.name,
-                injury.player.name,
-                injury.kind.as_deref().unwrap_or("injury"),
-                injury.reason.as_deref().unwrap_or("availability concern")
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("; ");
-    append_candidate_note(candidate, format!("API-Football injuries: {summary}"));
+                "API-Football selected team absences: {}",
+                selected_absences.join("; ")
+            ),
+        );
+    }
+    if !opponent_absences.is_empty() {
+        append_candidate_note(
+            candidate,
+            format!(
+                "API-Football opponent absences: {}",
+                opponent_absences.join("; ")
+            ),
+        );
+    }
+    if !neutral_absences.is_empty() {
+        append_candidate_note(
+            candidate,
+            format!("API-Football injuries: {}", neutral_absences.join("; ")),
+        );
+    }
 }
 
 pub(super) fn append_availability_coverage_note(
@@ -102,11 +129,18 @@ pub(super) fn append_form_notes(
     fixture: &ApiFixture,
     form_cache: &HashMap<u64, Vec<ApiFixture>>,
 ) {
+    let selected_team = selected_team_id(candidate, fixture);
     for team in [&fixture.teams.home, &fixture.teams.away] {
         let Some(fixtures) = form_cache.get(&team.id) else {
             continue;
         };
-        if let Some(note) = form_note(team.id, &team.name, &fixture.fixture.date, fixtures) {
+        if let Some(note) = form_note(
+            team.id,
+            &team.name,
+            team_relation(team.id, selected_team),
+            &fixture.fixture.date,
+            fixtures,
+        ) {
             append_candidate_note(candidate, note);
         } else {
             append_candidate_note(
@@ -125,8 +159,14 @@ pub(super) fn append_standings_notes(
     fixture: &ApiFixture,
     standings: &[ApiStandingRow],
 ) {
+    let selected_team = selected_team_id(candidate, fixture);
     for team in [&fixture.teams.home, &fixture.teams.away] {
-        if let Some(note) = standings_note(team.id, &team.name, standings) {
+        if let Some(note) = standings_note(
+            team.id,
+            &team.name,
+            team_relation(team.id, selected_team),
+            standings,
+        ) {
             append_candidate_note(candidate, note);
         }
     }
@@ -160,15 +200,86 @@ pub(super) fn append_standings_coverage_note(
 }
 
 fn fixture_matches_candidate(candidate: &BetCandidate, fixture: &ApiFixture) -> bool {
-    let event = normalize_name(&candidate.event);
-    let home = normalize_name(&fixture.teams.home.name);
-    let away = normalize_name(&fixture.teams.away.name);
-    event.contains(&home)
-        && event.contains(&away)
-        && kickoff_distance(candidate, fixture).is_none_or(|minutes| minutes <= 180)
+    candidate_event_teams(&candidate.event).is_some_and(|candidate_teams| {
+        teams_match(
+            &candidate_teams,
+            &fixture.teams.home.name,
+            &fixture.teams.away.name,
+        )
+    }) && kickoff_distance(candidate, fixture).is_none_or(|minutes| minutes <= 180)
 }
 
-fn standings_note(team_id: u64, team_name: &str, standings: &[ApiStandingRow]) -> Option<String> {
+fn teams_match(candidate_teams: &(String, String), home: &str, away: &str) -> bool {
+    (names_match(&candidate_teams.0, home) && names_match(&candidate_teams.1, away))
+        || (names_match(&candidate_teams.0, away) && names_match(&candidate_teams.1, home))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TeamRelation {
+    Selected,
+    Opponent,
+    Neutral,
+}
+
+fn team_relation(team_id: u64, selected_team_id: Option<u64>) -> TeamRelation {
+    match selected_team_id {
+        Some(selected_team_id) if selected_team_id == team_id => TeamRelation::Selected,
+        Some(_) => TeamRelation::Opponent,
+        None => TeamRelation::Neutral,
+    }
+}
+
+fn selected_team_id(candidate: &BetCandidate, fixture: &ApiFixture) -> Option<u64> {
+    for team in [&fixture.teams.home, &fixture.teams.away] {
+        if selection_mentions_team(&candidate.selection, &team.name) {
+            return Some(team.id);
+        }
+    }
+    None
+}
+
+fn selection_mentions_team(selection: &str, team_name: &str) -> bool {
+    let selection = normalize_tokens(&comparable_name(selection));
+    let team = normalize_tokens(&comparable_name(team_name));
+    if selection.is_empty() || team.is_empty() || selection.len() < team.len() {
+        return false;
+    }
+    selection.windows(team.len()).any(|window| window == team)
+}
+
+fn selected_absence_summary(injury: &ApiInjury) -> String {
+    format!(
+        "{} {} {} {}",
+        injury.team.name,
+        injury.player.name,
+        injury.kind.as_deref().unwrap_or("injury"),
+        injury.reason.as_deref().unwrap_or("availability concern")
+    )
+}
+
+fn opponent_absence_summary(injury: &ApiInjury) -> String {
+    format!("{} {}", injury.team.name, injury.player.name)
+}
+
+fn candidate_event_teams(event: &str) -> Option<(String, String)> {
+    for separator in [" - ", " vs. ", " vs ", " v ", " @ "] {
+        if let Some((left, right)) = event.split_once(separator) {
+            let left = comparable_name(left);
+            let right = comparable_name(right);
+            if !left.is_empty() && !right.is_empty() {
+                return Some((left, right));
+            }
+        }
+    }
+    None
+}
+
+fn standings_note(
+    team_id: u64,
+    team_name: &str,
+    relation: TeamRelation,
+    standings: &[ApiStandingRow],
+) -> Option<String> {
     let total = standings.len();
     let row = standings.iter().find(|row| row.team.id == team_id)?;
     let mut drivers = Vec::new();
@@ -219,11 +330,17 @@ fn standings_note(team_id: u64, team_name: &str, standings: &[ApiStandingRow]) -
         .as_deref()
         .filter(|group| !group.trim().is_empty())
         .map_or_else(String::new, |group| format!(" ({group})"));
-    Some(format!(
-        "API-Football motivation: {team_name}{group} {}; rank {}/{total}, {points}{goal_diff}{form}{status}",
-        drivers.join(" and "),
-        row.rank
-    ))
+    match relation {
+        TeamRelation::Selected | TeamRelation::Neutral => Some(format!(
+            "API-Football motivation: {team_name}{group} {}; rank {}/{total}, {points}{goal_diff}{form}{status}",
+            drivers.join(" and "),
+            row.rank
+        )),
+        TeamRelation::Opponent => Some(format!(
+            "API-Football opponent motivation risk: {team_name}{group} rank {}/{total}, {points}{goal_diff}{form}{status}",
+            row.rank
+        )),
+    }
 }
 
 fn kickoff_distance(candidate: &BetCandidate, fixture: &ApiFixture) -> Option<i64> {
@@ -235,6 +352,7 @@ fn kickoff_distance(candidate: &BetCandidate, fixture: &ApiFixture) -> Option<i6
 fn form_note(
     team_id: u64,
     team_name: &str,
+    relation: TeamRelation,
     fixture_date: &str,
     fixtures: &[ApiFixture],
 ) -> Option<String> {
@@ -260,13 +378,7 @@ fn form_note(
 
     let wins = results.iter().filter(|result| **result == 'W').count();
     let losses = results.iter().filter(|result| **result == 'L').count();
-    let form_label = if wins >= 3 {
-        "good form"
-    } else if losses >= 3 || wins == 0 {
-        "poor form"
-    } else {
-        "mixed recent form"
-    };
+    let form_label = form_label(relation, wins, losses);
     let mut note = format!(
         "API-Football form: {team_name} recent form {}; {form_label}",
         results.iter().copied().collect::<String>()
@@ -283,6 +395,29 @@ fn form_note(
         note.push_str("; schedule checked no rest-day signal");
     }
     Some(note)
+}
+
+fn form_label(relation: TeamRelation, wins: usize, losses: usize) -> &'static str {
+    match relation {
+        TeamRelation::Selected | TeamRelation::Neutral => {
+            if wins >= 3 {
+                "good form"
+            } else if losses >= 3 || wins == 0 {
+                "poor form"
+            } else {
+                "mixed recent form"
+            }
+        }
+        TeamRelation::Opponent => {
+            if wins >= 3 {
+                "opponent strong form"
+            } else if losses >= 3 || wins == 0 {
+                "opponent vulnerable form"
+            } else {
+                "opponent mixed form"
+            }
+        }
+    }
 }
 
 fn result_for_team(team_id: u64, fixture: &ApiFixture) -> Option<char> {
@@ -310,15 +445,4 @@ fn rest_days(previous_fixture_date: &str, next_fixture_date: &str) -> Option<i64
     let previous = iso_to_utc_minutes(previous_fixture_date)?;
     let next = iso_to_utc_minutes(next_fixture_date)?;
     Some(((next - previous) / 1440).max(0))
-}
-
-fn normalize_name(value: &str) -> String {
-    value
-        .chars()
-        .flat_map(char::to_lowercase)
-        .map(|ch| if ch.is_alphanumeric() { ch } else { ' ' })
-        .collect::<String>()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
 }

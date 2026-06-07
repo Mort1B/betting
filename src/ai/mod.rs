@@ -223,32 +223,70 @@ fn incomplete_response_reason(value: &Value) -> Option<String> {
 }
 
 fn validate_final_output(compact_report: &str, final_output: &str) -> Result<(), String> {
-    let expected = ranked_candidate_count(compact_report);
-    if expected == 0 {
+    let expected_headings = ranked_candidate_headings(compact_report);
+    if expected_headings.is_empty() {
         return Ok(());
     }
 
     let found = ranked_candidate_count(final_output);
-    if found < expected {
+    if found < expected_headings.len() {
         return Err(format!(
-            "Output writer omitted ranked candidates: expected {expected}, found {found}"
+            "Output writer omitted ranked candidates: expected {}, found {found}",
+            expected_headings.len()
         ));
+    }
+    for heading in &expected_headings {
+        if !final_output.lines().any(|line| line.trim() == heading) {
+            return Err(format!(
+                "Output writer omitted ranked candidate heading: {heading}"
+            ));
+        }
+    }
+    for line in required_summary_lines(compact_report) {
+        if !final_output.contains(&line) {
+            return Err(format!("Output writer omitted summary line: {line}"));
+        }
     }
 
     Ok(())
 }
 
+fn ranked_candidate_headings(report: &str) -> Vec<String> {
+    report
+        .lines()
+        .map(str::trim)
+        .filter(|line| is_ranked_candidate_heading(line))
+        .map(str::to_string)
+        .collect()
+}
+
 fn ranked_candidate_count(report: &str) -> usize {
     report
         .lines()
-        .filter(|line| {
-            let line = line.trim_start();
-            let Some(rest) = line.strip_prefix('#') else {
-                return false;
-            };
-            rest.chars().next().is_some_and(|ch| ch.is_ascii_digit())
-        })
+        .map(str::trim_start)
+        .filter(|line| is_ranked_candidate_heading(line))
         .count()
+}
+
+fn is_ranked_candidate_heading(line: &str) -> bool {
+    let Some(rest) = line.strip_prefix('#') else {
+        return false;
+    };
+    rest.chars().next().is_some_and(|ch| ch.is_ascii_digit())
+}
+
+fn required_summary_lines(report: &str) -> Vec<String> {
+    report
+        .lines()
+        .map(str::trim)
+        .filter(|line| {
+            line.starts_with("Football data provider:")
+                || line.starts_with("Football data provider note:")
+                || line.starts_with("Reference provider:")
+                || line.starts_with("Reference provider note:")
+        })
+        .map(str::to_string)
+        .collect()
 }
 
 #[cfg(test)]

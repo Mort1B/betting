@@ -7,6 +7,8 @@ pub(super) fn append_unknown_api_evidence(
     let notes = candidate.notes.to_lowercase();
     let fixture_unmatched = notes.contains("api-football fixture not matched");
     let fixture_matched = notes.contains("api-football fixture matched");
+    let fixture_skipped =
+        notes.contains("api-football fixture matched but context enrichment skipped");
 
     push_unknown_evidence(
         categories,
@@ -84,6 +86,19 @@ pub(super) fn append_unknown_api_evidence(
                 categories,
                 category_name,
                 "API-Football: fixture not matched, category unavailable",
+            );
+        }
+    } else if fixture_skipped {
+        for category_name in [
+            "Form",
+            "Injuries/suspensions",
+            "Motivation",
+            "Schedule/travel",
+        ] {
+            push_unknown_category_evidence(
+                categories,
+                category_name,
+                "API-Football: fixture matched, context enrichment skipped by cap",
             );
         }
     } else if fixture_matched {

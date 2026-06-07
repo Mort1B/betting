@@ -219,8 +219,8 @@ impl CliOptions {
            --odds-api-bookmakers LIST provider bookmaker keys, max 5\n\
            --odds-api-event-odds-limit N max event-level odds calls, default 2\n\
            --api-football-key KEY     enable API-Football context provider\n\
-           --api-football-max-fixtures N max matched fixtures to enrich, default 2\n\
-           --api-football-max-form-teams N max team-form calls, default 4\n\
+           --api-football-max-fixtures N max matched fixtures to enrich, default 5\n\
+           --api-football-max-form-teams N max team-form calls, default 10\n\
            --max-research-pages N     default 10\n\
            --max-research-items N     default 10 for listing sources\n\
            --send-email               send report through SMTP env vars\n\
