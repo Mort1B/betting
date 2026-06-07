@@ -24,6 +24,13 @@ pub fn apply_reference_odds(
     candidates: Vec<BetCandidate>,
     options: &ReferenceOddsOptions,
 ) -> Result<ReferenceOddsResult, String> {
+    if candidates.is_empty() {
+        return Ok(ReferenceOddsResult {
+            candidates,
+            provider_report_notes: no_candidate_provider_notes(options),
+        });
+    }
+
     let mut rows = Vec::new();
     if let Some(path) = options.source_path.as_deref() {
         rows.extend(load_reference_rows(path)?);
@@ -45,6 +52,18 @@ pub fn apply_reference_odds(
         candidates: enrich_candidates(candidates, &rows),
         provider_report_notes,
     })
+}
+
+fn no_candidate_provider_notes(options: &ReferenceOddsOptions) -> Vec<String> {
+    if options.source_path.is_none() && !has_configured_reference_provider(&options.providers) {
+        return Vec::new();
+    }
+
+    vec!["Reference odds skipped: no Norsk Tipping candidates to enrich".to_string()]
+}
+
+fn has_configured_reference_provider(options: &ReferenceProviderOptions) -> bool {
+    options.the_odds_api.is_some()
 }
 
 fn load_reference_rows(path: &str) -> Result<Vec<ReferenceOddsRow>, String> {

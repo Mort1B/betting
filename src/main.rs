@@ -98,11 +98,15 @@ fn main() {
     let football_data_provider_notes = football_data_result.provider_report_notes;
     timings.mark("football_data_enrichment");
 
-    let research_digest = match load_research(&options.research) {
-        Ok(digest) => digest,
-        Err(error) => {
-            eprintln!("failed to run market research: {error}");
-            process::exit(1);
+    let research_digest = if candidates.is_empty() {
+        None
+    } else {
+        match load_research(&options.research) {
+            Ok(digest) => digest,
+            Err(error) => {
+                eprintln!("failed to run market research: {error}");
+                process::exit(1);
+            }
         }
     };
     timings.mark("research_fetch");

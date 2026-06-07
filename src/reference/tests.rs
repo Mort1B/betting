@@ -109,3 +109,24 @@ fn rejects_rows_without_match_key() {
         parse_reference_rows("source,reference_odds\nBook A,1.15").expect_err("invalid row");
     assert!(error.contains("candidate_id"));
 }
+
+#[test]
+fn skips_reference_provider_when_no_candidates_are_available() {
+    let options = ReferenceOddsOptions {
+        source_path: None,
+        providers: ReferenceProviderOptions {
+            the_odds_api: Some(crate::reference_provider::TheOddsApiOptions::new(
+                "test-key".to_string(),
+                vec!["auto".to_string()],
+            )),
+        },
+    };
+
+    let result = apply_reference_odds(Vec::new(), &options).expect("empty candidates are valid");
+
+    assert!(result.candidates.is_empty());
+    assert_eq!(
+        result.provider_report_notes,
+        vec!["Reference odds skipped: no Norsk Tipping candidates to enrich"]
+    );
+}

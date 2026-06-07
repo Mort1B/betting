@@ -1,7 +1,10 @@
+use std::error::Error;
 use std::io::Read;
+use std::thread;
 use std::time::Duration;
 
-use reqwest::blocking::Client;
+use reqwest::StatusCode;
+use reqwest::blocking::{Client, Response};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -10,6 +13,7 @@ use super::models::{ClientContext, ContentId, ContentRequest, ContentResponse, E
 const CONTENT_GET_URL: &str =
     "https://www.norsk-tipping.no/sport/oddsen/sportsbook/services/content/get";
 const MAX_CONTENT_BODY_BYTES: u64 = 5_000_000;
+const MAX_FETCH_ATTEMPTS: usize = 3;
 
 pub(crate) struct LiveOddsClient {
     client: Client,
@@ -59,27 +63,113 @@ impl LiveOddsClient {
             },
         };
 
+        let mut attempt_errors = Vec::new();
+        for attempt in 1..=MAX_FETCH_ATTEMPTS {
+            match self.fetch_content_body(content_type, content_id, &request) {
+                Ok(body) => match parse_content_response(content_type, content_id, &body) {
+                    Ok(response) => return Ok(response),
+                    Err(error) if is_retryable_content_error(&error) => {
+                        attempt_errors.push(format!("attempt {attempt}: {error}"));
+                    }
+                    Err(error) => return Err(error),
+                },
+                Err(error) => {
+                    let retryable = error.retryable;
+                    attempt_errors.push(format!("attempt {attempt}: {}", error.message));
+                    if !retryable {
+                        break;
+                    }
+                }
+            }
+
+            if attempt < MAX_FETCH_ATTEMPTS {
+                thread::sleep(retry_delay(attempt));
+            }
+        }
+
+        let last_error = attempt_errors
+            .last()
+            .cloned()
+            .unwrap_or_else(|| "no attempt details available".to_string());
+        Err(format!(
+            "Norsk Tipping request failed after {MAX_FETCH_ATTEMPTS} attempt(s); {last_error}"
+        ))
+    }
+
+    fn fetch_content_body(
+        &self,
+        content_type: &str,
+        content_id: &str,
+        request: &ContentRequest<'_>,
+    ) -> Result<String, FetchAttemptError> {
         let response = self
             .client
             .post(CONTENT_GET_URL)
             .header("accept", "application/json")
             .header("content-type", "application/json")
             .header("poseidon", "oddsen")
-            .json(&request)
+            .json(request)
             .send()
-            .map_err(|error| format!("Norsk Tipping request failed: {error}"))?
-            .error_for_status()
-            .map_err(|error| format!("Norsk Tipping returned an HTTP error: {error}"))?;
-        let body = read_limited_body(response, MAX_CONTENT_BODY_BYTES)?;
+            .map_err(|error| {
+                let retryable = error.is_timeout() || error.is_connect() || error.is_request();
+                FetchAttemptError {
+                    retryable,
+                    message: format!(
+                        "Norsk Tipping request failed for {content_type} {content_id}: {}",
+                        error_chain(&error)
+                    ),
+                }
+            })?;
+        let status = response.status();
+        let body = read_limited_body(response, MAX_CONTENT_BODY_BYTES).map_err(|error| {
+            FetchAttemptError {
+                retryable: true,
+                message: error,
+            }
+        })?;
+        if !status.is_success() {
+            return Err(FetchAttemptError {
+                retryable: is_retryable_status(status),
+                message: format!(
+                    "Norsk Tipping returned HTTP {status} for {content_type} {content_id}; body: {}",
+                    body_excerpt(&body)
+                ),
+            });
+        }
 
-        parse_content_response(content_type, content_id, &body)
+        Ok(body)
     }
 }
 
-fn read_limited_body(
-    response: reqwest::blocking::Response,
-    max_bytes: u64,
-) -> Result<String, String> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FetchAttemptError {
+    message: String,
+    retryable: bool,
+}
+
+fn retry_delay(attempt: usize) -> Duration {
+    Duration::from_millis((attempt as u64) * 300)
+}
+
+fn is_retryable_status(status: StatusCode) -> bool {
+    status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error()
+}
+
+fn is_retryable_content_error(error: &str) -> bool {
+    error.contains("Norsk Tipping returned INTERNAL_ERROR")
+}
+
+fn error_chain(error: &reqwest::Error) -> String {
+    let mut parts = vec![error.to_string()];
+    let mut source = error.source();
+    while let Some(error) = source {
+        parts.push(error.to_string());
+        source = error.source();
+    }
+    parts.join(": ")
+}
+
+fn read_limited_body(response: Response, max_bytes: u64) -> Result<String, String> {
     let mut limited = response.take(max_bytes + 1);
     let mut bytes = Vec::new();
     limited
@@ -105,11 +195,13 @@ where
         )
     })?;
 
-    if value
-        .get("errorType")
-        .and_then(Value::as_str)
-        .is_some_and(|error_type| error_type == "CONTENT_NOT_FOUND")
-    {
+    if let Some(error_type) = value.get("errorType").and_then(Value::as_str) {
+        if error_type != "CONTENT_NOT_FOUND" {
+            return Err(format!(
+                "Norsk Tipping returned {error_type} for {content_type} {content_id}; body: {}",
+                body_excerpt(body)
+            ));
+        }
         return serde_json::from_value(Value::Object(
             [("data".to_string(), Value::Array(Vec::new()))]
                 .into_iter()
@@ -173,6 +265,19 @@ mod tests {
         .expect("content not found should be an empty board");
 
         assert!(response.data.is_empty());
+    }
+
+    #[test]
+    fn internal_error_response_is_not_treated_as_empty_board() {
+        let error = parse_content_response::<ContentResponse<Event>>(
+            "sportTypeByDate",
+            "202606070000/202606072359/",
+            r#"{"errorType":"INTERNAL_ERROR","data":[]}"#,
+        )
+        .expect_err("internal error should be surfaced");
+
+        assert!(error.contains("Norsk Tipping returned INTERNAL_ERROR"));
+        assert!(error.contains("sportTypeByDate 202606070000/202606072359/"));
     }
 
     #[test]
