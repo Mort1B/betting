@@ -280,7 +280,9 @@ fn required_summary_lines(report: &str) -> Vec<String> {
         .lines()
         .map(str::trim)
         .filter(|line| {
-            line.starts_with("Football data provider:")
+            line.starts_with("Candidate source:")
+                || line.starts_with("Candidate source note:")
+                || line.starts_with("Football data provider:")
                 || line.starts_with("Football data provider note:")
                 || line.starts_with("Reference provider:")
                 || line.starts_with("Reference provider note:")

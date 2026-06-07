@@ -19,6 +19,7 @@ fi
 REPO_DIR="${BETTING_REPO_DIR:-$DEFAULT_REPO_DIR}"
 INPUT_CSV="${BETTING_INPUT_CSV:-$REPO_DIR/examples/norsk_tipping_candidates.csv}"
 CANDIDATE_SOURCE="${BETTING_CANDIDATE_SOURCE:-norsk-tipping-live}"
+ALLOW_EMPTY_LIVE_SOURCE_ON_ERROR="${BETTING_ALLOW_EMPTY_LIVE_SOURCE_ON_ERROR:-true}"
 SPORT_SCOPE="${BETTING_SPORT_SCOPE:-football}"
 PICK_COUNT="${BETTING_PICK_COUNT:-5}"
 MIN_ODDS="${BETTING_MIN_ODDS:-1.10}"
@@ -145,7 +146,23 @@ case "$CANDIDATE_SOURCE" in
     ;;
 esac
 
+LIVE_SOURCE_FALLBACK_ARGS=()
+if [[ "$CANDIDATE_SOURCE" == "norsk-tipping-live" ]]; then
+  case "$ALLOW_EMPTY_LIVE_SOURCE_ON_ERROR" in
+    true|1|yes)
+      LIVE_SOURCE_FALLBACK_ARGS=(--allow-empty-live-source-on-error)
+      ;;
+    false|0|no)
+      ;;
+    *)
+      echo "BETTING_ALLOW_EMPTY_LIVE_SOURCE_ON_ERROR must be true or false" >&2
+      exit 2
+      ;;
+  esac
+fi
+
 cargo run -- "${SOURCE_ARGS[@]}" \
+  "${LIVE_SOURCE_FALLBACK_ARGS[@]}" \
   --date "$TODAY" \
   --sport-scope "$SPORT_SCOPE" \
   --pick-count "$PICK_COUNT" \

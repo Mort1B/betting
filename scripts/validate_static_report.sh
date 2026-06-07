@@ -13,17 +13,23 @@ if [[ ! -d "$REPORT_DIR" ]]; then
   exit 2
 fi
 
-for file in today.txt today.json today.html history.jsonl; do
+for file in today.txt today.json today.html; do
   if [[ ! -s "$REPORT_DIR/$file" ]]; then
     echo "missing or empty report artifact: $REPORT_DIR/$file" >&2
     exit 1
   fi
 done
 
+if [[ ! -e "$REPORT_DIR/history.jsonl" ]]; then
+  echo "missing report artifact: $REPORT_DIR/history.jsonl" >&2
+  exit 1
+fi
+
 jq -e '
   .schema_version == 1
   and (.reports.final_text | type == "string")
   and (.reports.deterministic_text | type == "string")
+  and (.candidate_source_notes | type == "array")
   and (.decision.picks | type == "array")
   and (
     if .decision.kind == "no_bet" then true
@@ -41,7 +47,7 @@ if grep -R "apiKey=" "$REPORT_DIR" | grep -v "apiKey=<redacted>" >/dev/null; the
   exit 1
 fi
 
-if grep -R -E "OPENAI_API_KEY|BETTING_ODDS_API_KEY|BETTING_FOOTBALL_DATA_API_KEY|sk-[A-Za-z0-9]" "$REPORT_DIR" >/dev/null; then
+if grep -R -E "OPENAI_API_KEY|BETTING_ODDS_API_KEY|BETTING_FOOTBALL_DATA_API_KEY|sk-[A-Za-z0-9_-]{16,}" "$REPORT_DIR" >/dev/null; then
   echo "secret-looking token or secret environment variable name found in report artifacts" >&2
   exit 1
 fi

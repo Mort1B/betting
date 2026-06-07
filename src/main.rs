@@ -53,8 +53,26 @@ fn main() {
     };
 
     let mut timings = StageTimings::from_env();
-    let mut candidates = match load_candidates(&options.source, &options.rules) {
-        Ok(candidates) => candidates,
+    let (mut candidates, candidate_source_notes) = match load_candidates(
+        &options.source,
+        &options.rules,
+    ) {
+        Ok(candidates) => (candidates, Vec::new()),
+        Err(error)
+            if options.allow_empty_live_source_on_error
+                && matches!(options.source, CandidateSource::NorskTippingLive(_)) =>
+        {
+            let public_error = public_error(&error);
+            eprintln!(
+                "candidate source unavailable; publishing empty fallback report: {public_error}"
+            );
+            (
+                Vec::new(),
+                vec![format!(
+                    "Norsk Tipping live source unavailable; published NO BET fallback with no ranked candidates: {public_error}"
+                )],
+            )
+        }
         Err(error) => {
             eprintln!("failed to load candidates: {error}");
             process::exit(1);
@@ -114,6 +132,7 @@ fn main() {
     let deterministic_report = render_recommendation(
         &options.rules,
         &recommendation,
+        &candidate_source_notes,
         &reference_provider_notes,
         &football_data_provider_notes,
     );
@@ -146,6 +165,7 @@ fn main() {
             ai_enabled: options.ai.enabled,
             ai_used,
             ai_fallback_reason,
+            candidate_source_notes,
             reference_provider_notes,
             football_data_provider_notes,
         };

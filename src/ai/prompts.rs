@@ -88,6 +88,8 @@ const COMPACT_REPORT_PREFIXES: &[&str] = &[
     "Date filter:",
     "Scope:",
     "Pick history:",
+    "Candidate source:",
+    "Candidate source note:",
     "Source coverage:",
     "Missing context:",
     "Reference provider:",
@@ -154,6 +156,7 @@ mod tests {
 
         for required in [
             "Decision: TOP 2 CANDIDATES",
+            "Candidate source: Norsk Tipping live source healthy",
             "#1 Rosenborg - Brann",
             "Norsk Tipping odds: 1.27",
             "Strict rules status: pass",
@@ -192,6 +195,7 @@ mod tests {
 Rules: Norsk Tipping preferred odds 1.10-1.30, hard research ceiling 1.35, min probability 79.00%, min confidence 65.00%, min edge 1.50 pp when model/reference data exists
 Scope: football | Pick target: 2
 Source coverage: reviewed up to 10 page(s); matched 1/2 pick(s); warnings on 1; source errors 1
+Candidate source: Norsk Tipping live source healthy
 Football data provider: API-Football disabled: football data API key not configured
 Learning summary: history: no settled learning data available
 

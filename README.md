@@ -278,10 +278,18 @@ target, pick-history status, source coverage, missing football context, and the
 learning summary. Each pick then keeps its own research counts, learning note,
 strict status, and football context checklist.
 
+Scheduled scripts pass `--allow-empty-live-source-on-error` by default for the
+live Norsk Tipping source. If the public Norsk Tipping request fails, the run
+publishes a `NO BET` fallback with a `Candidate source` outage note instead of
+failing the whole Pages deployment. Set
+`BETTING_ALLOW_EMPTY_LIVE_SOURCE_ON_ERROR=false` to make scripted runs fail fast
+while debugging source access.
+
 The static publisher also writes `today.json` beside the text report. The JSON
 contains the complete deterministic ranked picks, the final text report, the
-deterministic text report, reference-provider notes, football-data provider
-notes, and whether the optional AI rewrite was used or fell back. The tokenized
+deterministic text report, candidate-source notes, reference-provider notes,
+football-data provider notes, and whether the optional AI rewrite was used or
+fell back. The tokenized
 `today.html` page displays
 `today.txt` in a wrapping text view and links directly to the JSON fallback.
 The publisher validates `today.json` before completing, including ranked-pick
