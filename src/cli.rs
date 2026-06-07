@@ -16,6 +16,7 @@ pub(crate) struct CliOptions {
     pub(crate) football_data: FootballDataOptions,
     pub(crate) delivery: DeliveryOptions,
     pub(crate) ai: AiOptions,
+    pub(crate) allow_empty_live_source_on_error: bool,
 }
 
 #[derive(Debug)]
@@ -38,10 +39,12 @@ impl CliOptions {
         let mut ai = AiOptions::default();
         let mut input_path = None;
         let mut use_norsk_tipping_live = false;
+        let mut allow_empty_live_source_on_error = false;
         let mut live_options = LiveOddsOptions::default();
         while let Some(flag) = args.next() {
             match flag.as_str() {
                 "--norsk-tipping-live" => use_norsk_tipping_live = true,
+                "--allow-empty-live-source-on-error" => allow_empty_live_source_on_error = true,
                 "--nt-events-per-sport" => {
                     live_options.events_per_sport = parse_usize(&mut args, "--nt-events-per-sport")?
                 }
@@ -189,6 +192,7 @@ impl CliOptions {
             football_data,
             delivery,
             ai,
+            allow_empty_live_source_on_error,
         })
     }
 
@@ -199,6 +203,7 @@ impl CliOptions {
          \n\
          Options:\n\
            --norsk-tipping-live       load live candidates from Norsk Tipping Oddsen\n\
+           --allow-empty-live-source-on-error publish NO BET if live source cannot be loaded\n\
            --nt-events-per-sport N    live source event page size, default 35\n\
            --nt-earliest-start TEXT   live source earliest cutoff, e.g. 2026-05-16T16:00\n\
            --nt-latest-start TEXT     live source latest cutoff, e.g. 2026-05-17T05:00\n\

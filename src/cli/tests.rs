@@ -45,6 +45,24 @@ fn parses_norsk_tipping_live_source() {
         CandidateSource::Csv(_) => panic!("expected live source"),
     }
     assert_eq!(options.rules.pick_count, 7);
+    assert!(!options.allow_empty_live_source_on_error);
+}
+
+#[test]
+fn parses_empty_live_source_fallback_flag() {
+    let options = CliOptions::parse(
+        [
+            "--norsk-tipping-live",
+            "--allow-empty-live-source-on-error",
+            "--date",
+            "2026-05-16",
+        ]
+        .into_iter()
+        .map(str::to_string),
+    )
+    .expect("valid options");
+
+    assert!(options.allow_empty_live_source_on_error);
 }
 
 #[test]

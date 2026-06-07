@@ -12,6 +12,7 @@ pub(crate) use json::{JsonReportMeta, write_json_report};
 pub fn render_recommendation(
     rules: &BettingRules,
     recommendation: &RecommendationDecision,
+    candidate_source_notes: &[String],
     reference_provider_notes: &[String],
     football_data_provider_notes: &[String],
 ) -> String {
@@ -34,6 +35,7 @@ pub fn render_recommendation(
         &mut output,
         rules,
         recommendation,
+        candidate_source_notes,
         reference_provider_notes,
         football_data_provider_notes,
     );
@@ -97,6 +99,7 @@ fn push_run_summary(
     output: &mut String,
     rules: &BettingRules,
     recommendation: &RecommendationDecision,
+    candidate_source_notes: &[String],
     reference_provider_notes: &[String],
     football_data_provider_notes: &[String],
 ) {
@@ -107,6 +110,7 @@ fn push_run_summary(
         rules.pick_count
     ));
     output.push_str(&format!("Pick history: {}\n", history_status()));
+    push_candidate_source_notes(output, candidate_source_notes);
     if candidates.is_empty() {
         output.push_str("Source coverage: no ranked candidates\n");
         push_reference_provider_notes(output, reference_provider_notes);
@@ -129,6 +133,16 @@ fn push_run_summary(
         "Learning summary: {}\n",
         learning_summary(&candidates)
     ));
+}
+
+fn push_candidate_source_notes(output: &mut String, notes: &[String]) {
+    for (index, note) in notes.iter().take(4).enumerate() {
+        if index == 0 {
+            output.push_str(&format!("Candidate source: {note}\n"));
+        } else {
+            output.push_str(&format!("Candidate source note: {note}\n"));
+        }
+    }
 }
 
 fn push_football_data_provider_notes(output: &mut String, notes: &[String]) {
@@ -239,8 +253,23 @@ fn learning_summary(candidates: &[&EvaluatedCandidate]) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        push_football_data_provider_notes, push_reference_provider_notes, unique_source_error_count,
+        push_candidate_source_notes, push_football_data_provider_notes,
+        push_reference_provider_notes, unique_source_error_count,
     };
+
+    #[test]
+    fn prints_candidate_source_notes() {
+        let notes = vec![
+            "Norsk Tipping live source unavailable; published NO BET fallback".to_string(),
+            "retry tomorrow".to_string(),
+        ];
+        let mut output = String::new();
+
+        push_candidate_source_notes(&mut output, &notes);
+
+        assert!(output.contains("Candidate source: Norsk Tipping live source unavailable"));
+        assert!(output.contains("Candidate source note: retry tomorrow"));
+    }
 
     #[test]
     fn prints_reference_provider_summary_and_notes() {

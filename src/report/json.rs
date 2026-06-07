@@ -13,6 +13,7 @@ pub(crate) struct JsonReportMeta {
     pub(crate) ai_enabled: bool,
     pub(crate) ai_used: bool,
     pub(crate) ai_fallback_reason: Option<String>,
+    pub(crate) candidate_source_notes: Vec<String>,
     pub(crate) reference_provider_notes: Vec<String>,
     pub(crate) football_data_provider_notes: Vec<String>,
 }
@@ -54,6 +55,7 @@ fn json_report_value(
             "used": meta.ai_used,
             "fallback_reason": meta.ai_fallback_reason
         },
+        "candidate_source_notes": meta.candidate_source_notes,
         "reference_provider_notes": meta.reference_provider_notes,
         "football_data_provider_notes": meta.football_data_provider_notes,
         "decision": decision_value(recommendation),
@@ -223,6 +225,7 @@ mod tests {
             ai_enabled: true,
             ai_used: false,
             ai_fallback_reason: Some("truncated".to_string()),
+            candidate_source_notes: vec!["candidate source note".to_string()],
             reference_provider_notes: vec!["provider summary".to_string()],
             football_data_provider_notes: vec!["context summary".to_string()],
         };
@@ -232,6 +235,7 @@ mod tests {
         assert_eq!(value["schema_version"], 1);
         assert_eq!(value["reports"]["final_text"], "final report");
         assert_eq!(value["ai"]["fallback_reason"], "truncated");
+        assert_eq!(value["candidate_source_notes"][0], "candidate source note");
         assert_eq!(value["football_data_provider_notes"][0], "context summary");
         assert_eq!(value["decision"]["picks"][0]["rank"], 1);
         assert_eq!(
