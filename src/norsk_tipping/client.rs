@@ -1,3 +1,4 @@
+use std::io::Read;
 use std::time::Duration;
 
 use reqwest::blocking::Client;
@@ -8,6 +9,7 @@ use super::models::{ClientContext, ContentId, ContentRequest, ContentResponse, E
 
 const CONTENT_GET_URL: &str =
     "https://www.norsk-tipping.no/sport/oddsen/sportsbook/services/content/get";
+const MAX_CONTENT_BODY_BYTES: u64 = 5_000_000;
 
 pub(crate) struct LiveOddsClient {
     client: Client,
@@ -68,12 +70,28 @@ impl LiveOddsClient {
             .map_err(|error| format!("Norsk Tipping request failed: {error}"))?
             .error_for_status()
             .map_err(|error| format!("Norsk Tipping returned an HTTP error: {error}"))?;
-        let body = response
-            .text()
-            .map_err(|error| format!("failed to read Norsk Tipping response: {error}"))?;
+        let body = read_limited_body(response, MAX_CONTENT_BODY_BYTES)?;
 
         parse_content_response(content_type, content_id, &body)
     }
+}
+
+fn read_limited_body(
+    response: reqwest::blocking::Response,
+    max_bytes: u64,
+) -> Result<String, String> {
+    let mut limited = response.take(max_bytes + 1);
+    let mut bytes = Vec::new();
+    limited
+        .read_to_end(&mut bytes)
+        .map_err(|error| format!("failed to read Norsk Tipping response: {error}"))?;
+    if bytes.len() as u64 > max_bytes {
+        return Err(format!(
+            "Norsk Tipping response exceeded {max_bytes} byte limit"
+        ));
+    }
+    String::from_utf8(bytes)
+        .map_err(|error| format!("Norsk Tipping response was not UTF-8: {error}"))
 }
 
 fn parse_content_response<T>(content_type: &str, content_id: &str, body: &str) -> Result<T, String>

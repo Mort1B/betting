@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::env;
 
 use crate::domain::{BettingRules, EvaluatedCandidate, RecommendationDecision};
@@ -187,16 +188,23 @@ fn source_coverage(candidates: &[&EvaluatedCandidate]) -> String {
         .iter()
         .filter(|candidate| candidate.research.warning_mentions > 0)
         .count();
-    let source_errors = candidates
-        .iter()
-        .flat_map(|candidate| candidate.research.notes.iter())
-        .filter(|note| note.starts_with("source error:"))
-        .count();
+    let source_errors = unique_source_error_count(
+        candidates
+            .iter()
+            .flat_map(|candidate| candidate.research.notes.iter()),
+    );
 
     format!(
         "reviewed up to {pages_reviewed} page(s); matched {matched_candidates}/{} pick(s); warnings on {warning_candidates}; source errors {source_errors}",
         candidates.len()
     )
+}
+
+fn unique_source_error_count<'a>(notes: impl Iterator<Item = &'a String>) -> usize {
+    notes
+        .filter(|note| note.starts_with("source error:"))
+        .collect::<HashSet<_>>()
+        .len()
 }
 
 fn missing_context(candidates: &[&EvaluatedCandidate]) -> String {
@@ -230,7 +238,9 @@ fn learning_summary(candidates: &[&EvaluatedCandidate]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{push_football_data_provider_notes, push_reference_provider_notes};
+    use super::{
+        push_football_data_provider_notes, push_reference_provider_notes, unique_source_error_count,
+    };
 
     #[test]
     fn prints_reference_provider_summary_and_notes() {
@@ -260,5 +270,17 @@ mod tests {
         assert!(output.contains("Football data provider: API-Football"));
         assert!(output.contains("Football data provider note: API-Football injury request failed"));
         assert!(!output.contains("key"));
+    }
+
+    #[test]
+    fn source_error_summary_deduplicates_across_candidates() {
+        let repeated = "source error: Example: timeout".to_string();
+        let notes = [
+            repeated.clone(),
+            "source error: Other: blocked".to_string(),
+            repeated,
+        ];
+
+        assert_eq!(unique_source_error_count(notes.iter()), 2);
     }
 }

@@ -7,14 +7,18 @@ use super::{ApiFixture, ApiFootballProvider, ProviderStats, context::CandidateFi
 
 const MAX_FIXTURE_DATES: usize = 3;
 
-pub(super) fn fixture_dates_for_candidates(
+pub(super) fn fixture_dates_for_candidate_indexes(
     candidates: &[BetCandidate],
+    candidate_indexes: &[usize],
     report_date: &str,
 ) -> Vec<String> {
     let mut dates = Vec::new();
     push_date(&mut dates, report_date);
 
-    for candidate in candidates {
+    for &candidate_index in candidate_indexes {
+        let Some(candidate) = candidates.get(candidate_index) else {
+            continue;
+        };
         let Some(candidate_date) = candidate.starts_at.get(..10) else {
             continue;
         };
@@ -27,16 +31,20 @@ pub(super) fn fixture_dates_for_candidates(
     dates
 }
 
-pub(super) fn append_unmatched_fixture_notes(
+pub(super) fn append_unmatched_fixture_notes_for_indexes(
     candidates: &mut [BetCandidate],
     matches: &[CandidateFixtureMatch],
+    candidate_indexes: &[usize],
     date_count: usize,
 ) {
     let matched_candidate_indexes = matches
         .iter()
         .map(|candidate_match| candidate_match.candidate_index)
         .collect::<HashSet<_>>();
-    for (index, candidate) in candidates.iter_mut().enumerate() {
+    for &index in candidate_indexes {
+        let Some(candidate) = candidates.get_mut(index) else {
+            continue;
+        };
         if !matched_candidate_indexes.contains(&index) {
             append_candidate_note(
                 candidate,
@@ -45,6 +53,24 @@ pub(super) fn append_unmatched_fixture_notes(
                 ),
             );
         }
+    }
+}
+
+pub(super) fn append_skipped_fixture_notes(
+    candidates: &mut [BetCandidate],
+    matches: &[CandidateFixtureMatch],
+    max_context_fixtures: usize,
+) {
+    for candidate_match in matches.iter().skip(max_context_fixtures) {
+        let Some(candidate) = candidates.get_mut(candidate_match.candidate_index) else {
+            continue;
+        };
+        append_candidate_note(
+            candidate,
+            format!(
+                "API-Football fixture matched but context enrichment skipped: matched fixture cap {max_context_fixtures} reached"
+            ),
+        );
     }
 }
 
@@ -123,17 +149,44 @@ mod tests {
 
     #[test]
     fn includes_candidate_overnight_fixture_dates() {
-        let dates = fixture_dates_for_candidates(
-            &[
-                candidate("c1", "2026-05-21T02:00:00+02:00"),
-                candidate("c2", "2026-05-21T02:30:00+02:00"),
-            ],
-            "2026-05-20",
-        );
+        let candidates = vec![
+            candidate("c1", "2026-05-21T02:00:00+02:00"),
+            candidate("c2", "2026-05-21T02:30:00+02:00"),
+        ];
+        let candidate_indexes = (0..candidates.len()).collect::<Vec<_>>();
+        let dates =
+            fixture_dates_for_candidate_indexes(&candidates, &candidate_indexes, "2026-05-20");
 
         assert_eq!(
             dates,
             vec!["2026-05-20".to_string(), "2026-05-21".to_string()]
+        );
+    }
+
+    #[test]
+    fn marks_matched_candidates_skipped_by_context_cap() {
+        let mut candidates = vec![
+            candidate("c1", "2026-05-21T18:00:00+02:00"),
+            candidate("c2", "2026-05-21T19:00:00+02:00"),
+        ];
+        let matches = vec![
+            CandidateFixtureMatch {
+                candidate_index: 0,
+                fixture_index: 0,
+            },
+            CandidateFixtureMatch {
+                candidate_index: 1,
+                fixture_index: 1,
+            },
+        ];
+
+        append_skipped_fixture_notes(&mut candidates, &matches, 1);
+
+        assert!(!candidates[0].notes.contains("context enrichment skipped"));
+        assert!(
+            candidates[1]
+                .notes
+                .contains("context enrichment skipped: matched fixture cap 1 reached")
         );
     }
 }

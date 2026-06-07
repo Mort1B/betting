@@ -6,6 +6,8 @@ use crate::domain::{
     BettingRules, EvaluatedCandidate, FootballContextStatus, RecommendationDecision,
 };
 
+const MAX_HISTORY_BYTES: u64 = 5_000_000;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct PickHistoryEntry {
     pub(crate) report_date: String,
@@ -163,6 +165,12 @@ fn merge_entries(entries: &mut Vec<PickHistoryEntry>, new_entries: Vec<PickHisto
 }
 
 pub(crate) fn read_history_file(path: &str) -> Result<Vec<PickHistoryEntry>, String> {
+    let metadata = fs::metadata(path).map_err(|error| format!("{path}: {error}"))?;
+    if metadata.len() > MAX_HISTORY_BYTES {
+        return Err(format!(
+            "{path}: history file exceeds {MAX_HISTORY_BYTES} byte limit"
+        ));
+    }
     let content = fs::read_to_string(path).map_err(|error| format!("{path}: {error}"))?;
     let mut entries = Vec::new();
 
@@ -245,6 +253,22 @@ mod tests {
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].result_status, ResultStatus::Win);
         assert_eq!(entries[0].settlement_source.as_deref(), Some("verified"));
+    }
+
+    #[test]
+    fn rejects_oversized_history_file() {
+        let path = std::env::temp_dir().join(format!(
+            "betting-history-oversized-{}.jsonl",
+            std::process::id()
+        ));
+        fs::write(&path, " ".repeat((MAX_HISTORY_BYTES + 1) as usize))
+            .expect("write oversized history");
+
+        let error =
+            read_history_file(path.to_str().expect("temp path utf-8")).expect_err("too large");
+
+        assert!(error.contains("history file exceeds"));
+        let _ = fs::remove_file(path);
     }
 
     #[test]

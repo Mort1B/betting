@@ -76,13 +76,13 @@ const COUNTRY_ALIASES: &[(&str, &str)] = &[
     ("wales", "wales"),
 ];
 
-pub(super) fn names_match(left: &str, right: &str) -> bool {
+pub(crate) fn names_match(left: &str, right: &str) -> bool {
     let left = comparable_name(left);
     let right = comparable_name(right);
     !left.is_empty() && !right.is_empty() && left == right
 }
 
-pub(super) fn comparable_name(value: &str) -> String {
+pub(crate) fn comparable_name(value: &str) -> String {
     let mut tokens = normalize_tokens(value);
     while tokens
         .last()
@@ -94,7 +94,7 @@ pub(super) fn comparable_name(value: &str) -> String {
     canonical_country_name(&name).unwrap_or(name)
 }
 
-pub(super) fn normalize_tokens(value: &str) -> Vec<String> {
+pub(crate) fn normalize_tokens(value: &str) -> Vec<String> {
     fold_to_ascii(value)
         .chars()
         .map(|ch| {
@@ -138,4 +138,24 @@ fn fold_to_ascii(value: &str) -> String {
         }
     }
     folded
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{comparable_name, names_match, normalize_tokens};
+
+    #[test]
+    fn folds_diacritics_and_country_aliases() {
+        assert_eq!(comparable_name("Sør Korea"), "south korea");
+        assert_eq!(comparable_name("México FC"), "mexico");
+        assert!(names_match("Tsjekkia", "Czechia"));
+    }
+
+    #[test]
+    fn normalizes_tokens_for_market_matching() {
+        assert_eq!(
+            normalize_tokens("Rosenborg BK / Brann"),
+            vec!["rosenborg", "bk", "brann"]
+        );
+    }
 }

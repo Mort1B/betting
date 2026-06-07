@@ -1,15 +1,16 @@
 use std::collections::HashMap;
 
-use crate::domain::{BetCandidate, FootballContextStatus};
+use crate::domain::{BetCandidate, BettingRules, FootballContextStatus};
 use crate::football_context::assess_football_context;
 
 use super::context::{
     append_availability_coverage_note, append_fixture_note, append_form_notes, append_injury_notes,
-    append_standings_notes, match_candidates,
+    append_standings_notes, match_candidate_indexes,
 };
 use super::{
     ApiFixture, ApiFootballOptions, ApiFootballProvider, ApiLeagueCoverageResponse,
-    ApiStandingResponse, ProviderStats, flatten_standings, parse_envelope,
+    ApiStandingResponse, ProviderStats, context_candidate_indexes, flatten_standings,
+    parse_envelope,
 };
 
 #[test]
@@ -39,7 +40,8 @@ fn enriches_candidate_notes_from_fixture_injuries_and_form() {
     );
     let mut candidates = vec![candidate()];
 
-    let matches = match_candidates(&candidates, &fixtures);
+    let candidate_indexes = (0..candidates.len()).collect::<Vec<_>>();
+    let matches = match_candidate_indexes(&candidates, &candidate_indexes, &fixtures);
     assert_eq!(matches.len(), 1);
     assert_eq!(league_coverage[0].seasons[0].coverage.injuries, Some(true));
     assert_eq!(league_coverage[0].seasons[0].coverage.standings, Some(true));
@@ -55,13 +57,14 @@ fn enriches_candidate_notes_from_fixture_injuries_and_form() {
     append_standings_notes(&mut candidates[0], fixture, &standings);
 
     assert!(candidates[0].notes.contains("API-Football fixture matched"));
+    assert!(candidates[0].notes.contains("selected team absences"));
     assert!(candidates[0].notes.contains("Hamstring injury"));
     assert!(candidates[0].notes.contains("Rosenborg recent form WWW"));
     assert!(candidates[0].notes.contains("Brann recent form LLL"));
+    assert!(candidates[0].notes.contains("opponent vulnerable form"));
     assert!(candidates[0].notes.contains("Rosenborg (Regular Season)"));
     assert!(candidates[0].notes.contains("title race"));
-    assert!(candidates[0].notes.contains("Brann (Regular Season)"));
-    assert!(candidates[0].notes.contains("relegation battle"));
+    assert!(candidates[0].notes.contains("opponent motivation risk"));
     let context = assess_football_context(&candidates[0], None);
     assert!(
         context
@@ -82,8 +85,24 @@ fn enriches_candidate_notes_from_fixture_injuries_and_form() {
             .categories
             .iter()
             .any(|category| category.name == "Motivation"
-                && category.status == FootballContextStatus::Positive)
+                && category.status == FootballContextStatus::Warning)
     );
+}
+
+#[test]
+fn fixture_matching_uses_shared_team_aliases_and_suffixes() {
+    let fixtures =
+        parse_envelope::<ApiFixture>(include_str!("../../../fixtures/api_football_fixtures.json"))
+            .expect("fixture JSON");
+    let candidates = vec![candidate_with_event(
+        "Rosenborg FC - Brann",
+        "Rosenborg or draw",
+    )];
+    let candidate_indexes = (0..candidates.len()).collect::<Vec<_>>();
+
+    let matches = match_candidate_indexes(&candidates, &candidate_indexes, &fixtures);
+
+    assert_eq!(matches.len(), 1);
 }
 
 #[test]
@@ -141,6 +160,24 @@ fn summarizes_request_counts_without_secret_values() {
 }
 
 #[test]
+fn context_candidates_use_report_window_and_research_odds_band() {
+    let rules = BettingRules {
+        date: Some("2026-05-15".to_string()),
+        latest_start: Some("2026-05-16T05:00".to_string()),
+        ..BettingRules::default()
+    };
+    let candidates = vec![
+        candidate_with("outside-window", 1.20, "2026-05-16T05:30:00+02:00"),
+        candidate_with("below-band", 1.05, "2026-05-15T18:00:00+02:00"),
+        candidate_with("report-candidate", 1.28, "2026-05-16T04:30:00+02:00"),
+    ];
+
+    let indexes = context_candidate_indexes(&candidates, &rules);
+
+    assert_eq!(indexes, vec![2]);
+}
+
+#[test]
 fn redacts_api_key_from_errors() {
     let provider = ApiFootballProvider::new(ApiFootballOptions::new("secret-key".to_string()));
 
@@ -152,13 +189,25 @@ fn redacts_api_key_from_errors() {
 }
 
 fn candidate() -> BetCandidate {
+    candidate_with("c1", 1.22, "2026-05-15T18:00:00+02:00")
+}
+
+fn candidate_with(id: &str, odds: f64, starts_at: &str) -> BetCandidate {
+    let mut candidate = candidate_with_event("Rosenborg - Brann", "Rosenborg or draw");
+    candidate.id = id.to_string();
+    candidate.norsk_tipping_odds = odds;
+    candidate.starts_at = starts_at.to_string();
+    candidate
+}
+
+fn candidate_with_event(event: &str, selection: &str) -> BetCandidate {
     BetCandidate {
         id: "c1".to_string(),
         sport: "Football".to_string(),
         competition: "Eliteserien".to_string(),
-        event: "Rosenborg - Brann".to_string(),
+        event: event.to_string(),
         market: "Double chance".to_string(),
-        selection: "Rosenborg or draw".to_string(),
+        selection: selection.to_string(),
         norsk_tipping_odds: 1.22,
         model_probability: None,
         reference_odds: None,

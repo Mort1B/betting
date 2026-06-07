@@ -64,6 +64,13 @@ pub fn load_sources(options: &ResearchOptions) -> Result<Vec<ResearchSource>, St
             ));
         }
 
+        if !fields[2].starts_with("https://") {
+            return Err(format!(
+                "line {}: research source URL must use https://",
+                index + 1
+            ));
+        }
+
         sources.push(ResearchSource {
             name: fields[0].to_string(),
             kind: ResearchSourceKind::parse(fields[1])?,
@@ -92,5 +99,23 @@ mod tests {
             ResearchSourceKind::parse("web").expect("valid"),
             ResearchSourceKind::Html
         );
+    }
+
+    #[test]
+    fn rejects_non_https_source_urls() {
+        let temp_path = std::env::temp_dir().join(format!(
+            "betting-research-source-{}.txt",
+            std::process::id()
+        ));
+        fs::write(&temp_path, "Local|html|http://127.0.0.1/feed\n").expect("write source file");
+
+        let error = load_sources(&ResearchOptions {
+            source_path: Some(temp_path.display().to_string()),
+            ..ResearchOptions::default()
+        })
+        .expect_err("http source should be rejected");
+
+        assert!(error.contains("must use https://"));
+        let _ = fs::remove_file(temp_path);
     }
 }

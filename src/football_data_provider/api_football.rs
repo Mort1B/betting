@@ -14,7 +14,7 @@ use crate::football_data_provider::{FootballContextProvider, FootballDataResult}
 
 use context::{
     append_availability_coverage_note, append_fixture_note, append_form_notes, append_injury_notes,
-    append_standings_coverage_note, append_standings_notes, match_candidates,
+    append_standings_coverage_note, append_standings_notes, match_candidate_indexes,
 };
 use models::{
     ApiFixture, ApiFootballEnvelope, ApiInjury, ApiLeagueCoverage, ApiLeagueCoverageResponse,
@@ -40,8 +40,8 @@ impl ApiFootballOptions {
             api_key,
             base_url: DEFAULT_BASE_URL.to_string(),
             timezone: DEFAULT_TIMEZONE.to_string(),
-            max_context_fixtures: 2,
-            max_form_teams: 4,
+            max_context_fixtures: 5,
+            max_form_teams: 10,
         }
     }
 }
@@ -89,12 +89,26 @@ impl FootballContextProvider for ApiFootballProvider {
 
         let mut stats = ProviderStats::default();
         let mut notes = Vec::new();
-        let fixture_dates = fixtures::fixture_dates_for_candidates(&candidates, date);
+        let context_candidate_indexes = context_candidate_indexes(&candidates, rules);
+        if context_candidate_indexes.is_empty() {
+            return FootballDataResult {
+                candidates,
+                provider_report_notes: vec![
+                    "API-Football skipped: no report-window football candidates inside the research odds band"
+                        .to_string(),
+                ],
+            };
+        }
+        let fixture_dates = fixtures::fixture_dates_for_candidate_indexes(
+            &candidates,
+            &context_candidate_indexes,
+            date,
+        );
         let fixtures =
             match self.fetch_fixtures_for_dates(&client, &fixture_dates, &mut stats, &mut notes) {
                 Ok(fixtures) => fixtures,
                 Err(error) => {
-                    let candidate_count = candidates.len();
+                    let candidate_count = context_candidate_indexes.len();
                     return FootballDataResult {
                         candidates,
                         provider_report_notes: vec![
@@ -106,8 +120,18 @@ impl FootballContextProvider for ApiFootballProvider {
             };
 
         let mut candidates = candidates;
-        let matches = match_candidates(&candidates, &fixtures);
-        fixtures::append_unmatched_fixture_notes(&mut candidates, &matches, fixture_dates.len());
+        let matches = match_candidate_indexes(&candidates, &context_candidate_indexes, &fixtures);
+        fixtures::append_unmatched_fixture_notes_for_indexes(
+            &mut candidates,
+            &matches,
+            &context_candidate_indexes,
+            fixture_dates.len(),
+        );
+        fixtures::append_skipped_fixture_notes(
+            &mut candidates,
+            &matches,
+            self.options.max_context_fixtures,
+        );
         let mut injury_cache = HashMap::new();
         let mut coverage_cache = HashMap::new();
         let mut standings_cache = HashMap::new();
@@ -212,7 +236,8 @@ impl FootballContextProvider for ApiFootballProvider {
             );
         }
 
-        let mut provider_report_notes = vec![stats.summary(matches.len(), candidates.len())];
+        let mut provider_report_notes =
+            vec![stats.summary(matches.len(), context_candidate_indexes.len())];
         provider_report_notes.extend(notes.into_iter().take(3));
 
         FootballDataResult {
@@ -378,6 +403,40 @@ fn flatten_standings(responses: Vec<ApiStandingResponse>) -> Vec<ApiStandingRow>
         .flat_map(|response| response.league.standings)
         .flatten()
         .collect()
+}
+
+fn context_candidate_indexes(candidates: &[BetCandidate], rules: &BettingRules) -> Vec<usize> {
+    let scoped = candidates
+        .iter()
+        .enumerate()
+        .filter(|(_, candidate)| rules.sport_scope.allows_sport(&candidate.sport))
+        .filter(|(_, candidate)| rules.is_inside_research_odds_band(candidate.norsk_tipping_odds))
+        .map(|(index, _)| index)
+        .collect::<Vec<_>>();
+
+    let Some(date) = rules.date.as_deref() else {
+        return scoped;
+    };
+
+    let date_screened = scoped
+        .iter()
+        .copied()
+        .filter(|&index| starts_inside_context_window(&candidates[index].starts_at, date, rules))
+        .collect::<Vec<_>>();
+    if date_screened.is_empty() {
+        scoped
+    } else {
+        date_screened
+    }
+}
+
+fn starts_inside_context_window(starts_at: &str, date: &str, rules: &BettingRules) -> bool {
+    if let Some(latest_start) = rules.latest_start.as_deref() {
+        return starts_at
+            .get(..latest_start.len())
+            .is_some_and(|prefix| prefix >= date && prefix <= latest_start);
+    }
+    starts_at.starts_with(date)
 }
 
 fn parse_envelope<T>(body: &str) -> Result<Vec<T>, String>

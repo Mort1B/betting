@@ -35,7 +35,9 @@ pub fn apply_football_data(
 
     FootballDataResult {
         candidates,
-        provider_report_notes: Vec::new(),
+        provider_report_notes: vec![
+            "API-Football disabled: football data API key not configured".to_string(),
+        ],
     }
 }
 

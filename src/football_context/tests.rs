@@ -119,6 +119,47 @@ fn uses_specific_european_table_context_from_candidate_notes() {
 }
 
 #[test]
+fn treats_opponent_context_with_selection_direction() {
+    let assessment = assess_football_context(
+        &candidate(
+            "API-Football form: Away recent form LLL; opponent vulnerable form; API-Football opponent absences: Away Defender",
+        ),
+        None,
+    );
+    let form = assessment
+        .categories
+        .iter()
+        .find(|category| category.name == "Form")
+        .expect("form category");
+    let injuries = assessment
+        .categories
+        .iter()
+        .find(|category| category.name == "Injuries/suspensions")
+        .expect("injury category");
+
+    assert_eq!(form.status, FootballContextStatus::Positive);
+    assert_eq!(injuries.status, FootballContextStatus::Positive);
+}
+
+#[test]
+fn clean_injury_phrase_does_not_become_warning() {
+    let assessment = assess_football_context(&candidate("no fresh injury; full squad"), None);
+    let injuries = assessment
+        .categories
+        .iter()
+        .find(|category| category.name == "Injuries/suspensions")
+        .expect("injury category");
+
+    assert_eq!(injuries.status, FootballContextStatus::Positive);
+    assert!(
+        !injuries
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("warning injury"))
+    );
+}
+
+#[test]
 fn explains_unknown_api_context_when_fixture_does_not_match() {
     let assessment = assess_football_context(
         &candidate("API-Football fixture not matched: no provider fixture matched teams/start"),
@@ -182,6 +223,40 @@ fn explains_unknown_api_context_when_coverage_is_missing() {
             .evidence
             .iter()
             .any(|evidence| evidence.contains("coverage unavailable"))
+    );
+}
+
+#[test]
+fn explains_unknown_api_context_when_enrichment_cap_skips_match() {
+    let assessment = assess_football_context(
+        &candidate(
+            "API-Football fixture matched but context enrichment skipped: matched fixture cap 1 reached",
+        ),
+        None,
+    );
+
+    let form = assessment
+        .categories
+        .iter()
+        .find(|category| category.name == "Form")
+        .expect("form category");
+    let schedule = assessment
+        .categories
+        .iter()
+        .find(|category| category.name == "Schedule/travel")
+        .expect("schedule category");
+
+    assert_eq!(form.status, FootballContextStatus::Unknown);
+    assert!(
+        form.evidence
+            .iter()
+            .any(|evidence| evidence.contains("skipped by cap"))
+    );
+    assert!(
+        schedule
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("skipped by cap"))
     );
 }
 

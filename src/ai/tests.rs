@@ -55,7 +55,7 @@ fn ai_workflow_keeps_four_roles_with_compact_inputs() {
         "explorer summary",
         "reviewer challenge",
         "risk notes",
-        "#1 Rosenborg - Brann\nfinal first pick\n\n#2 Arsenal - Everton\nfinal second pick",
+        "Football data provider: API-Football disabled: football data API key not configured\n#1 Rosenborg - Brann\nfinal first pick\n\n#2 Arsenal - Everton\nfinal second pick",
     ]);
 
     let report = run_ai_workflow_with_client(WORKFLOW_FIXTURE, &mut client)
@@ -66,7 +66,7 @@ fn ai_workflow_keeps_four_roles_with_compact_inputs() {
     assert_eq!(report.risk_manager, "risk notes");
     assert_eq!(
         report.final_output,
-        "#1 Rosenborg - Brann\nfinal first pick\n\n#2 Arsenal - Everton\nfinal second pick"
+        "Football data provider: API-Football disabled: football data API key not configured\n#1 Rosenborg - Brann\nfinal first pick\n\n#2 Arsenal - Everton\nfinal second pick"
     );
     assert_eq!(
         client
@@ -80,6 +80,7 @@ fn ai_workflow_keeps_four_roles_with_compact_inputs() {
     let explorer = &client.calls[0].input;
     assert!(explorer.contains("Compact deterministic report:"));
     assert!(explorer.contains("Decision: TOP 2 CANDIDATES"));
+    assert!(explorer.contains("Football data provider: API-Football disabled"));
     assert!(explorer.contains("#1 Rosenborg - Brann"));
     assert!(explorer.contains("Strict rules status: fallback candidate"));
     assert!(explorer.contains("Football context checklist:"));
@@ -118,6 +119,21 @@ fn rejects_ai_final_output_that_omits_ranked_candidates() {
         .expect_err("final output should be rejected");
 
     assert!(error.contains("omitted ranked candidates"));
+}
+
+#[test]
+fn rejects_ai_final_output_that_omits_provider_status() {
+    let mut client = MockAiClient::new([
+        "explorer summary",
+        "reviewer challenge",
+        "risk notes",
+        "#1 Rosenborg - Brann\nfinal first pick\n\n#2 Arsenal - Everton\nfinal second pick",
+    ]);
+
+    let error = run_ai_workflow_with_client(WORKFLOW_FIXTURE, &mut client)
+        .expect_err("final output should be rejected");
+
+    assert!(error.contains("omitted summary line"));
 }
 
 struct MockAiClient {
@@ -161,6 +177,7 @@ const WORKFLOW_FIXTURE: &str = r#"Daily betting agent recommendation
 
 Rules: Norsk Tipping preferred odds 1.10-1.30, hard research ceiling 1.35, min probability 79.00%, min confidence 65.00%, min edge 1.50 pp when model/reference data exists
 Scope: football | Pick target: 2
+Football data provider: API-Football disabled: football data API key not configured
 Decision: TOP 2 CANDIDATES
 Reason: fallback fill
 Top 2 candidates:

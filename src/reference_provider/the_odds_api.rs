@@ -1,7 +1,6 @@
 mod event_match;
 mod http;
 mod market_match;
-mod name_match;
 mod request_plan;
 mod sport_keys;
 mod time;

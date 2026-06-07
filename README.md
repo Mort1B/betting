@@ -151,8 +151,8 @@ Live source controls:
   fixtures by normalized teams and kickoff time, checks league-season coverage,
   then adds bounded form, injury/suspension, schedule/rest, and standings
   motivation notes before scoring.
-- `BETTING_API_FOOTBALL_MAX_FIXTURES=2` caps matched fixtures enriched with
-  injury and context calls. `BETTING_API_FOOTBALL_MAX_FORM_TEAMS=4` caps recent
+- `BETTING_API_FOOTBALL_MAX_FIXTURES=5` caps matched fixtures enriched with
+  injury and context calls. `BETTING_API_FOOTBALL_MAX_FORM_TEAMS=10` caps recent
   team-form calls. These defaults keep scheduled API usage small.
 - `BETTING_API_FOOTBALL_TIMEZONE=Europe/Oslo` controls fixture date matching.
   `BETTING_API_FOOTBALL_BASE_URL` is only for local/mock testing.
