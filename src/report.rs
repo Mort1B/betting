@@ -206,6 +206,13 @@ fn source_coverage(candidates: &[&EvaluatedCandidate]) -> String {
         candidates
             .iter()
             .flat_map(|candidate| candidate.research.notes.iter()),
+    )
+    .max(
+        candidates
+            .iter()
+            .map(|candidate| candidate.research.source_error_count)
+            .max()
+            .unwrap_or(0),
     );
 
     format!(

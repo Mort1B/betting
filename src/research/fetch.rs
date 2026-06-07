@@ -12,7 +12,7 @@ use super::source::{ResearchOptions, ResearchSource, ResearchSourceKind};
 
 const MAX_PARALLEL_FETCHES: usize = 4;
 const MAX_RESEARCH_BODY_BYTES: u64 = 1_500_000;
-const USER_AGENT: &str = "betting-daily-agent/0.1 by local-user";
+const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) betting-daily-agent/0.1";
 
 #[derive(Debug, Clone)]
 pub struct MarketResearchClient {

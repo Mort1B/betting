@@ -153,6 +153,7 @@ fn candidate_value(rank: usize, candidate: &EvaluatedCandidate) -> Value {
         },
         "research": {
             "pages_reviewed": candidate.research.pages_reviewed,
+            "source_error_count": candidate.research.source_error_count,
             "matched_pages": candidate.research.matched_pages,
             "positive_mentions": candidate.research.positive_mentions,
             "warning_mentions": candidate.research.warning_mentions,

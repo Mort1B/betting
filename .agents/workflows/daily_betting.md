@@ -42,7 +42,10 @@ comparison signals.
      assessed.
 
 4. `Market Research Client`
-   - Fetches configured football Reddit JSON and HTML research sources.
+   - Fetches configured football HTML research sources by default.
+   - Keeps Reddit JSON source support available for manual or authenticated
+     diagnostics, but scheduled defaults exclude unauthenticated Reddit URLs
+     while they return 403.
    - Uses `examples/football_research_sources.txt` by default.
    - Produces positive, warning, and price-hint signals.
 

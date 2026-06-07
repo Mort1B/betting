@@ -131,10 +131,12 @@ The runtime is a deterministic multi-agent pipeline coordinated by
 - Uses `examples/football_research_sources.txt` in scheduled football runs.
 - Supports Reddit JSON listing URLs, Reddit daily-thread searches, and normal
   HTML pages.
-- Extracts the top configured Reddit posts/items from listing sources and top
-  comments from selected daily-thread sources.
+- Keeps Reddit support available for manual or authenticated diagnostics, but
+  scheduled football sources exclude unauthenticated Reddit URLs while they
+  return 403 from scheduled runners.
 - Produces page-level positive, warning, and decimal-price signals.
-- Keeps fetch failures visible as source-error research notes.
+- Counts fetch failures in the run summary without repeating source-level
+  failures under every candidate.
 
 `ResearchAssessment`
 

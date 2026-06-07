@@ -195,6 +195,7 @@ pub struct RiskAssessment {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResearchAssessment {
     pub pages_reviewed: usize,
+    pub source_error_count: usize,
     pub matched_pages: usize,
     pub positive_mentions: usize,
     pub warning_mentions: usize,
@@ -206,6 +207,7 @@ impl ResearchAssessment {
     pub fn empty() -> Self {
         Self {
             pages_reviewed: 0,
+            source_error_count: 0,
             matched_pages: 0,
             positive_mentions: 0,
             warning_mentions: 0,

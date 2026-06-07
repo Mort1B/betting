@@ -9,6 +9,13 @@ impl ResearchDigest {
     pub fn empty() -> Self {
         Self { pages: Vec::new() }
     }
+
+    pub fn source_error_count(&self) -> usize {
+        self.pages
+            .iter()
+            .filter(|page| page.error.is_some())
+            .count()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -79,12 +86,13 @@ pub fn assess_candidate_research(
     let mut warning_mentions = 0;
     let mut price_hints = Vec::new();
     let mut notes = Vec::new();
+    let source_error_count = digest.source_error_count();
+    let pages_reviewed = digest.pages.len().saturating_sub(source_error_count);
     let terms = candidate_terms(candidate);
     let event_terms = split_terms(&candidate.event);
 
     for page in &digest.pages {
-        if let Some(error) = &page.error {
-            notes.push(format!("source error: {}: {error}", page.source_name));
+        if page.error.is_some() {
             continue;
         }
 
@@ -125,7 +133,8 @@ pub fn assess_candidate_research(
     }
 
     ResearchAssessment {
-        pages_reviewed: digest.pages.len(),
+        pages_reviewed,
+        source_error_count,
         matched_pages,
         positive_mentions,
         warning_mentions,
@@ -259,7 +268,7 @@ mod tests {
     }
 
     #[test]
-    fn exposes_source_errors_as_research_notes() {
+    fn counts_source_errors_without_candidate_note_spam() {
         let digest = ResearchDigest {
             pages: vec![ResearchPage::source_error(
                 "blocked source".to_string(),
@@ -270,12 +279,9 @@ mod tests {
 
         let assessment = assess_candidate_research(&candidate(), Some(&digest));
 
-        assert!(
-            assessment
-                .notes
-                .iter()
-                .any(|note| note.contains("source error: blocked source: returned 403"))
-        );
+        assert_eq!(assessment.pages_reviewed, 0);
+        assert_eq!(assessment.source_error_count, 1);
+        assert_eq!(assessment.notes, vec!["no relevant research matches found"]);
     }
 
     #[test]

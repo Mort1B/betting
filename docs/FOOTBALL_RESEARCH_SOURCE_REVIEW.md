@@ -19,12 +19,10 @@ fetchable data.
   - market context.
 - Weather and lineup/rotation are intentionally excluded from the checklist and
   deterministic risk penalties.
-- Reddit daily-thread comments are now a first-class research source kind:
-  `reddit_thread_search`.
-- The scheduled football source file includes:
-  - `r/soccerbetting` daily picks thread comments,
-  - a guarded `r/sportsbetting` daily picks thread search,
-  - `r/sportsbook` soccer daily discussion comments as the practical fallback.
+- Reddit daily-thread comments remain a first-class research source kind:
+  `reddit_thread_search`, but they are not enabled in the scheduled source file
+  by default because unauthenticated Reddit JSON/search endpoints currently
+  return 403 from scheduled runners.
 
 ## Reddit Daily Threads
 
@@ -38,14 +36,12 @@ Live checks on 2026-05-19 showed:
   `Soccer Betting and Picks Daily Discussion` threads.
 
 Decision:
-- Use `r/soccerbetting` directly.
-- Keep a guarded `r/sportsbetting` search in the scheduled source file. Empty
-  daily-thread searches return no research pages instead of source-error noise.
-- Use `r/sportsbook` soccer daily discussion as the stable daily-thread fallback
-  for general sports-betting Reddit context.
-- Fetch Reddit with curl first from Rust because live testing showed Reddit can
-  return empty or forbidden responses to the `reqwest` client while curl returns
-  the expected JSON listing.
+- Keep Reddit source support in code for manual or authenticated diagnostics.
+- Do not include unauthenticated Reddit URLs in
+  `examples/football_research_sources.txt` while they consistently return 403
+  from scheduled runners.
+- Empty daily-thread searches return no research pages instead of source-error
+  noise when Reddit access is available.
 
 ## API And Scraping Findings
 

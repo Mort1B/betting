@@ -2,9 +2,9 @@
 # Football-only sources for the scheduled daily workflow.
 # Keep this file to pages that are allowed and practical to fetch automatically.
 # The scheduled publisher reads at most 13 entries by default.
-Reddit soccerbetting daily picks thread|reddit_thread_search|https://api.reddit.com/r/soccerbetting/search?q=Daily%20Picks%20Thread&restrict_sr=1&sort=new&t=week&limit=5
-Reddit sportsbetting daily picks thread|reddit_thread_search|https://api.reddit.com/r/sportsbetting/search?q=Daily%20Picks%20Thread&restrict_sr=1&sort=new&t=week&limit=5
-Reddit sportsbook soccer daily discussion|reddit_thread_search|https://api.reddit.com/r/sportsbook/search?q=Soccer%20Betting%20and%20Picks%20Daily%20Discussion&restrict_sr=1&sort=new&t=week&limit=5
+# Reddit unauthenticated JSON/search endpoints currently return 403 from scheduled runners.
+# Keep Reddit source support in code for manual/authenticated diagnostics, but do not
+# spend scheduled source slots on blocked Reddit URLs.
 Football365 football news|html|https://www.football365.com/
 Forebet football today|html|https://www.forebet.com/football-tips-and-predictions-for-today?lang=en
 SportyTrader football tips|html|https://www.sportytrader.com/en/betting-tips/football/
