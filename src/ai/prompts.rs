@@ -166,7 +166,7 @@ mod tests {
             "Learning: history: no settled learning data available",
             "Risk flags: 1 research warning mention(s)",
             "Research notes:",
-            "- source error: Example feed timeout",
+            "- preview matched 2 candidate terms",
             "#2 Arsenal - Everton",
             "Strict rules status: fallback candidate",
         ] {
@@ -219,7 +219,7 @@ Football context checklist:
 - Form: positive: candidate notes: strong form
 Risk flags: 1 research warning mention(s)
 Research notes:
-- source error: Example feed timeout
+- preview matched 2 candidate terms
 Explanation: verbose repeated explanation that is not needed in compact input
 
 #2 Arsenal - Everton

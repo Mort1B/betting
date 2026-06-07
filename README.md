@@ -120,8 +120,8 @@ Live source controls:
 - `BETTING_NT_LATEST_START` defaults to `05:00` on the next Oslo date. Runs
   before `05:00` keep the report date on the previous day so the midnight
   workflow refreshes the same 16:00-05:00 card.
-- `BETTING_MAX_RESEARCH_PAGES=13` is the scheduled default so Reddit daily
-  thread checks and football news or market pages are all included.
+- `BETTING_MAX_RESEARCH_PAGES=13` is the scheduled default so football news and
+  market pages are all included.
 - `BETTING_REFERENCE_ODDS_CSV=/path/to/reference_odds.csv` optionally adds
   external comparison prices for audit context. It is not required.
 - `BETTING_ODDS_API_KEY=...` enables live reference-price enrichment from The
@@ -338,13 +338,12 @@ Supported source kinds:
 - `html`
 
 Research is treated as weak supporting evidence. It can adjust confidence, but
-it must not override hard probability, confidence, and odds-band gates.
-Fetch failures are shown as source-error notes so missing research is visible.
-The scheduled football source list includes Reddit daily-thread comment checks
-for `r/soccerbetting` and `r/sportsbetting`, plus a `r/sportsbook` soccer daily
-discussion fallback. Current `r/sportsbetting` searches did not expose a stable
-daily picks thread; an empty daily-thread search is treated as no available
-research rather than a source failure.
+it must not override hard probability, confidence, and odds-band gates. Fetch
+failures are counted in the run summary so missing research is visible without
+repeating source-level failures under every pick. The scheduled football source
+list excludes Reddit by default because unauthenticated Reddit JSON/search
+endpoints currently return 403 from scheduled runners; the Reddit source kinds
+remain available for manual or authenticated diagnostics.
 
 ## Pick History
 
