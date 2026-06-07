@@ -42,10 +42,10 @@ comparison signals.
      assessed.
 
 4. `Market Research Client`
-   - Fetches configured football HTML research sources by default.
-   - Keeps Reddit JSON source support available for manual or authenticated
-     diagnostics, but scheduled defaults exclude unauthenticated Reddit URLs
-     while they return 403.
+   - Fetches configured football HTML and Reddit research sources by default.
+   - Fetches Reddit JSON and daily-thread sources through Reddit OAuth when
+     `BETTING_REDDIT_CLIENT_ID` and `BETTING_REDDIT_CLIENT_SECRET` are
+     configured.
    - Uses `examples/football_research_sources.txt` by default.
    - Produces positive, warning, and price-hint signals.
 

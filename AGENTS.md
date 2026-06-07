@@ -147,6 +147,10 @@ GitHub Actions:
 - `BETTING_FOOTBALL_DATA_API_KEY` when GitHub Actions should enrich football
   form, injury/suspension, schedule, and standings motivation context from
   API-Football.
+- `BETTING_REDDIT_CLIENT_ID` and `BETTING_REDDIT_CLIENT_SECRET` when GitHub
+  Actions should fetch Reddit daily-thread research through OAuth.
+- `BETTING_REDDIT_USER_AGENT` when GitHub Actions should use a custom Reddit API
+  user agent.
 - `BETTING_PUSHOVER_TOKEN` and `BETTING_PUSHOVER_USER` when GitHub Actions
   should send iPhone push notifications.
 

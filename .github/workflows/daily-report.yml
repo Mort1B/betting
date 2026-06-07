@@ -67,6 +67,9 @@ jobs:
           BETTING_MAX_ODDS: "1.30"
           BETTING_NT_EVENTS_PER_SPORT: "35"
           BETTING_RESEARCH_SOURCES: ${{ github.workspace }}/examples/football_research_sources.txt
+          BETTING_REDDIT_CLIENT_ID: ${{ secrets.BETTING_REDDIT_CLIENT_ID }}
+          BETTING_REDDIT_CLIENT_SECRET: ${{ secrets.BETTING_REDDIT_CLIENT_SECRET }}
+          BETTING_REDDIT_USER_AGENT: ${{ secrets.BETTING_REDDIT_USER_AGENT }}
           BETTING_ODDS_API_KEY: ${{ secrets.BETTING_ODDS_API_KEY }}
           BETTING_ODDS_API_BOOKMAKERS: unibet_se,pinnacle,betfair_ex_eu,betsson,williamhill
           BETTING_ODDS_API_EVENT_ODDS_LIMIT: "2"

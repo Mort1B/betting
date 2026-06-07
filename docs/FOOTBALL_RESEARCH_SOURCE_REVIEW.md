@@ -20,9 +20,9 @@ fetchable data.
 - Weather and lineup/rotation are intentionally excluded from the checklist and
   deterministic risk penalties.
 - Reddit daily-thread comments remain a first-class research source kind:
-  `reddit_thread_search`, but they are not enabled in the scheduled source file
-  by default because unauthenticated Reddit JSON/search endpoints currently
-  return 403 from scheduled runners.
+  `reddit_thread_search`, and scheduled runs fetch them through Reddit OAuth
+  when `BETTING_REDDIT_CLIENT_ID` and `BETTING_REDDIT_CLIENT_SECRET` are
+  configured.
 
 ## Reddit Daily Threads
 
@@ -36,10 +36,10 @@ Live checks on 2026-05-19 showed:
   `Soccer Betting and Picks Daily Discussion` threads.
 
 Decision:
-- Keep Reddit source support in code for manual or authenticated diagnostics.
-- Do not include unauthenticated Reddit URLs in
-  `examples/football_research_sources.txt` while they consistently return 403
-  from scheduled runners.
+- Keep Reddit source support in code through OAuth-backed API fetches.
+- Include Reddit daily-thread searches in `examples/football_research_sources.txt`
+  because anonymous Reddit JSON/search fetches are no longer used for these
+  sources.
 - Empty daily-thread searches return no research pages instead of source-error
   noise when Reddit access is available.
 

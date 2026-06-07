@@ -57,6 +57,9 @@ GitHub Actions secrets:
   enrichment.
 - `BETTING_FOOTBALL_DATA_API_KEY`: optional key for API-Football structured
   football context enrichment.
+- `BETTING_REDDIT_CLIENT_ID` and `BETTING_REDDIT_CLIENT_SECRET`: optional
+  Reddit API OAuth credentials for daily-thread research.
+- `BETTING_REDDIT_USER_AGENT`: optional descriptive Reddit API user agent.
 
 Report URL shape:
 
@@ -122,6 +125,12 @@ Live source controls:
   workflow refreshes the same 16:00-05:00 card.
 - `BETTING_MAX_RESEARCH_PAGES=13` is the scheduled default so football news and
   market pages are all included.
+- `BETTING_REDDIT_CLIENT_ID` and `BETTING_REDDIT_CLIENT_SECRET` enable Reddit
+  daily-thread research through Reddit OAuth. Without both values, Reddit
+  sources are skipped as source-level research failures and are not repeated
+  under every candidate.
+- `BETTING_REDDIT_USER_AGENT` optionally overrides the default user agent for
+  Reddit OAuth requests.
 - `BETTING_REFERENCE_ODDS_CSV=/path/to/reference_odds.csv` optionally adds
   external comparison prices for audit context. It is not required.
 - `BETTING_ODDS_API_KEY=...` enables live reference-price enrichment from The
@@ -340,10 +349,9 @@ Supported source kinds:
 Research is treated as weak supporting evidence. It can adjust confidence, but
 it must not override hard probability, confidence, and odds-band gates. Fetch
 failures are counted in the run summary so missing research is visible without
-repeating source-level failures under every pick. The scheduled football source
-list excludes Reddit by default because unauthenticated Reddit JSON/search
-endpoints currently return 403 from scheduled runners; the Reddit source kinds
-remain available for manual or authenticated diagnostics.
+repeating source-level failures under every pick. Scheduled football runs include
+Reddit daily-thread searches, and those Reddit sources require OAuth credentials
+from `BETTING_REDDIT_CLIENT_ID` and `BETTING_REDDIT_CLIENT_SECRET`.
 
 ## Pick History
 
